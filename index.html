@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>US Map Chaos Simulator</title>
+<style>
+  :root {
+    --bg-ocean: #1a2a40;
+    --panel-bg: rgba(18, 22, 34, 0.94);
+    --border-color: #3b4863;
+    --text-main: #f0f4fc;
+    --text-dim: #9aa8c7;
+    --accent-gold: #ffd166;
+    --accent-red: #ef476f;
+    --accent-green: #06d6a0;
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  body {
+    background: #0f141e;
+    color: var(--text-main);
+    font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  /* Tablet-Optimized Shell */
+  #app {
+    display: flex;
+    flex-direction: row;
+    height: 100vh;
+    width: 100vw;
+  }
+
+  #viewport {
+    flex: 1;
+    position: relative;
+    background: radial-gradient(circle at 50% 40%, #20334f 0%, #111b2b 100%);
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  svg#map {
+    width: 100%;
+    height: 100%;
+    filter: drop-shadow(0 0 16px rgba(0,0,0,0.6));
+  }
+
+  /* Map Visuals */
+  .state-poly {
+    stroke: #0a0f18;
+    stroke-width: 1.2;
+    transition: fill 0.25s ease, stroke 0.2s;
+    cursor: pointer;
+  }
+
+  .state-poly:hover {
+    stroke: #ffffff;
+    stroke-width: 2.2;
+  }
+
+  .ocean-lane {
+    stroke: rgba(255, 209, 102, 0.35);
+    stroke-width: 1.8;
+    stroke-dasharray: 4, 4;
+    fill: none;
+  }
+
+  .ocean-border-tile {
+    stroke: #385078;
+    stroke-width: 1.5;
+    stroke-dasharray: 6, 3;
+    cursor: pointer;
+  }
+
+  .capital-marker {
+    fill: #ffffff;
+    stroke: #d00000;
+    stroke-width: 2.5;
+    transition: cx 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2), cy 0.5s cubic-bezier(0.2, 0.9, 0.3, 1.2);
+    cursor: grab;
+  }
+
+  .capital-marker.dodging {
+    fill: #ffd166;
+    stroke: #ff0055;
+    filter: drop-shadow(0 0 6px #ff0055);
+  }
+
+  .state-label {
+    fill: #ffffff;
+    font-size: 8.5px;
+    font-weight: 800;
+    text-anchor: middle;
+    pointer-events: none;
+    text-shadow: 0 1px 3px #000, 0 0 4px #000;
+  }
+
+  /* Right Sidebar / Tablet Control Center */
+  #sidebar {
+    width: 360px;
+    background: var(--panel-bg);
+    border-left: 2px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 14px;
+    gap: 12px;
+    backdrop-filter: blur(8px);
+    z-index: 10;
+  }
+
+  .panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 8px;
+  }
+
+  .panel-title {
+    font-weight: 900;
+    font-size: 1.05rem;
+    letter-spacing: 0.5px;
+    color: var(--accent-gold);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .status-badge {
+    background: #25334d;
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    font-weight: 700;
+  }
+
+  .controls-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  button.btn {
+    background: #233148;
+    color: #fff;
+    border: 1px solid #485c80;
+    padding: 10px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    border-radius: 8px;
+    cursor: pointer;
+    touch-action: manipulation;
+    transition: all 0.15s ease;
+  }
+
+  button.btn:active {
+    transform: scale(0.96);
+  }
+
+  button.btn-accent {
+    background: #ef476f;
+    border-color: #ff6b8b;
+  }
+
+  button.btn-gold {
+    background: #d4a317;
+    border-color: #ffd166;
+    color: #0b111a;
+  }
+
+  .select-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .select-row label {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    font-weight: 700;
+  }
+
+  select {
+    background: #182232;
+    border: 1px solid var(--border-color);
+    color: #fff;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 0.85rem;
+    outline: none;
+  }
+
+  /* Leaderboard & Kill Feed Tabs */
+  .tabs {
+    display: flex;
+    background: #121926;
+    border-radius: 6px;
+    padding: 2px;
+  }
+
+  .tab-btn {
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: var(--text-dim);
+    padding: 6px;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+    border-radius: 4px;
+  }
+
+  .tab-btn.active {
+    background: #26354f;
+    color: #fff;
+  }
+
+  .scroll-container {
+    flex: 1;
+    background: #0d131f;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    overflow-y: auto;
+    padding: 8px;
+    font-size: 0.78rem;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  /* Log entries */
+  .log-entry {
+    padding: 4px 6px;
+    border-radius: 4px;
+    background: #141b2a;
+    border-left: 3px solid #6b7c9e;
+    line-height: 1.3;
+    animation: fadeIn 0.2s ease-in;
+  }
+
+  .log-war { border-left-color: var(--accent-red); }
+  .log-buy { border-left-color: var(--accent-gold); }
+  .log-merge { border-left-color: #9d4edd; }
+  .log-revolt { border-left-color: #ff9e00; }
+  .log-alliance { border-left-color: var(--accent-green); }
+  .log-dodge { border-left-color: #00b4d8; }
+
+  /* Leaderboard Row */
+  .lb-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 8px;
+    background: #151e2e;
+    border-radius: 4px;
+  }
+
+  .lb-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .color-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-3px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Toast Notification */
+  #toast {
+    position: absolute;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(12, 17, 26, 0.95);
+    border: 1px solid var(--accent-gold);
+    color: #fff;
+    padding: 8px 18px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 800;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.3s;
+    z-index: 100;
+  }
+
+  /* Floating Year/Tick Counter */
+  #stats-overlay {
+    position: absolute;
+    top: 16px;
+    left: 16px;
+    background: var(--panel-bg);
+    border: 1px solid var(--border-color);
+    padding: 8px 14px;
+    border-radius: 8px;
+    display: flex;
+    gap: 14px;
+    font-size: 0.85rem;
+    font-weight: 800;
+  }
+</style>
+</head>
+<body>
+
+<div id="app">
+  <div id="viewport">
+    <div id="stats-overlay">
+      <div>Year: <span id="year-count" style="color:var(--accent-gold)">1</span></div>
+      <div>Active Nations: <span id="nation-count" style="color:var(--accent-green)">51</span></div>
+    </div>
+    <div id="toast">Florida sniped Havana!</div>
+
+    <!-- 1000x650 coordinate grid US map + offshore islands -->
+    <svg id="map" viewBox="0 0 1000 650">
+      <defs>
+        <pattern id="ocean-grid" width="20" height="20" patternUnits="userSpaceOnUse">
+          <circle cx="2" cy="2" r="1" fill="rgba(255,255,255,0.04)" />
+        </pattern>
+      </defs>
+      
+      <rect width="1000" height="650" fill="url(#ocean-grid)" />
+
+      <!-- Deep ocean lanes (ocean conquest conduits) -->
+      <g id="ocean-lanes"></g>
+
+      <!-- SVG Territories -->
+      <g id="territories"></g>
+
+      <!-- Capital markers (Moveable and Auto-Dodging) -->
+      <g id="capitals"></g>
+
+      <!-- Dynamic labels -->
+      <g id="labels"></g>
+    </svg>
+  </div>
+
+  <!-- Tablet Control Dashboard -->
+  <div id="sidebar">
+    <div class="panel-header">
+      <div class="panel-title">⚡ STATE SIMULATOR</div>
+      <div class="status-badge" id="sim-status">PAUSED</div>
+    </div>
+
+    <div class="controls-grid">
+      <button class="btn btn-accent" id="btn-toggle">START / PAUSE</button>
+      <button class="btn" id="btn-step">NEXT TURN</button>
+      <button class="btn btn-gold" id="btn-random-rich">REROLL COIN KING</button>
+      <button class="btn" id="btn-drain">WASTE RESOURCES</button>
+    </div>
+
+    <div class="select-row">
+      <label>SET WEALTHIEST STATE MANUALLY:</label>
+      <select id="state-select">
+        <option value="">-- Choose State to Fund --</option>
+      </select>
+    </div>
+
+    <div class="tabs">
+      <button class="tab-btn active" id="tab-log">BATTLE FEED</button>
+      <button class="tab-btn" id="tab-lb">LEADERBOARD</button>
+    </div>
+
+    <div class="scroll-container" id="feed-container"></div>
+    <div class="scroll-container" id="lb-container" style="display:none;"></div>
+  </div>
+</div>
+
+<script>
+// --- GEOMETRIC NODES & BORDERS (50 States + Puerto Rico + 3 Offshore Island Bases) ---
+// Alaska, Hawaii, and Puerto Rico placed along the bottom lane under the mainland.
+const NODES = {
+  // Pacific / Northwest
+  WA: { name: "Washington", path: "M 100,50 L 170,55 L 165,110 L 90,100 Z", cx: 130, cy: 75, adj: ["OR", "ID"], ocean: ["PACIFIC_NW"] },
+  OR: { name: "Oregon", path: "M 90,100 L 165,110 L 155,180 L 75,165 Z", cx: 120, cy: 135, adj: ["WA", "ID", "NV", "CA"], ocean: ["PACIFIC_NW"] },
+  CA: { name: "California", path: "M 75,165 L 155,180 L 130,320 L 70,300 Z", cx: 105, cy: 235, adj: ["OR", "NV", "AZ"], ocean: ["PACIFIC_S"] },
+  ID: { name: "Idaho", path: "M 170,55 L 210,60 L 195,190 L 155,180 L 165,110 Z", cx: 180, cy: 120, adj: ["WA", "OR", "NV", "UT", "WY", "MT"], ocean: [] },
+  NV: { name: "Nevada", path: "M 155,180 L 215,190 L 195,290 L 130,320 Z", cx: 175, cy: 235, adj: ["CA", "OR", "ID", "UT", "AZ"], ocean: [] },
+  AZ: { name: "Arizona", path: "M 130,320 L 195,290 L 210,400 L 140,395 Z", cx: 170, cy: 350, adj: ["CA", "NV", "UT", "NM"], ocean: [] },
+  UT: { name: "Utah", path: "M 215,190 L 275,195 L 265,295 L 195,290 Z", cx: 235, cy: 240, adj: ["NV", "ID", "WY", "CO", "AZ", "NM"], ocean: [] },
+  MT: { name: "Montana", path: "M 210,60 L 350,70 L 340,140 L 195,130 Z", cx: 275, cy: 95, adj: ["ID", "WY", "ND", "SD"], ocean: [] },
+  WY: { name: "Wyoming", path: "M 205,135 L 340,140 L 330,210 L 205,200 Z", cx: 270, cy: 170, adj: ["MT", "ID", "UT", "CO", "NE", "SD"], ocean: [] },
+  CO: { name: "Colorado", path: "M 275,195 L 390,200 L 380,285 L 265,280 Z", cx: 330, cy: 240, adj: ["WY", "UT", "NM", "OK", "KS", "NE"], ocean: [] },
+  NM: { name: "New Mexico", path: "M 210,290 L 320,290 L 310,410 L 205,405 Z", cx: 260, cy: 350, adj: ["AZ", "UT", "CO", "OK", "TX"], ocean: [] },
+
+  // Midwest / Great Plains
+  ND: { name: "North Dakota", path: "M 350,70 L 460,75 L 455,135 L 340,130 Z", cx: 405, cy: 100, adj: ["MT", "SD", "MN"], ocean: [] },
+  SD: { name: "South Dakota", path: "M 340,130 L 455,135 L 450,195 L 330,190 Z", cx: 395, cy: 160, adj: ["ND", "MT", "WY", "NE", "IA", "MN"], ocean: [] },
+  NE: { name: "Nebraska", path: "M 330,190 L 450,195 L 440,265 L 330,255 Z", cx: 385, cy: 225, adj: ["SD", "WY", "CO", "KS", "MO", "IA"], ocean: [] },
+  KS: { name: "Kansas", path: "M 330,255 L 445,265 L 435,325 L 325,315 Z", cx: 385, cy: 290, adj: ["NE", "CO", "OK", "MO"], ocean: [] },
+  OK: { name: "Oklahoma", path: "M 320,315 L 440,325 L 430,375 L 305,365 Z", cx: 375, cy: 345, adj: ["KS", "CO", "NM", "TX", "MO", "AR"], ocean: [] },
+  TX: { name: "Texas", path: "M 305,365 L 430,375 L 450,470 L 360,510 L 270,440 Z", cx: 370, cy: 440, adj: ["NM", "OK", "AR", "LA"], ocean: ["GULF_W"] },
+  MN: { name: "Minnesota", path: "M 460,75 L 530,80 L 515,175 L 455,165 Z", cx: 490, cy: 120, adj: ["ND", "SD", "IA", "WI"], ocean: [] },
+  IA: { name: "Iowa", path: "M 455,165 L 525,175 L 515,240 L 445,230 Z", cx: 485, cy: 200, adj: ["MN", "SD", "NE", "MO", "IL", "WI"], ocean: [] },
+  MO: { name: "Missouri", path: "M 445,230 L 525,240 L 515,325 L 435,315 Z", cx: 480, cy: 275, adj: ["IA", "NE", "KS", "OK", "AR", "TN", "KY", "IL"], ocean: [] },
+  AR: { name: "Arkansas", path: "M 435,315 L 505,325 L 495,395 L 430,385 Z", cx: 470, cy: 355, adj: ["MO", "OK", "TX", "LA", "MS", "TN"], ocean: [] },
+  LA: { name: "Louisiana", path: "M 430,385 L 500,395 L 490,470 L 430,460 Z", cx: 465, cy: 430, adj: ["TX", "AR", "MS"], ocean: ["GULF_W"] },
+  WI: { name: "Wisconsin", path: "M 525,110 L 585,115 L 575,195 L 515,190 Z", cx: 550, cy: 150, adj: ["MN", "IA", "IL", "MI"], ocean: [] },
+  IL: { name: "Illinois", path: "M 515,190 L 565,195 L 555,295 L 505,285 Z", cx: 535, cy: 240, adj: ["WI", "IA", "MO", "KY", "IN"], ocean: [] },
+  MI: { name: "Michigan", path: "M 585,115 L 650,120 L 635,210 L 575,200 Z", cx: 610, cy: 160, adj: ["WI", "IN", "OH"], ocean: [] },
+  IN: { name: "Indiana", path: "M 565,195 L 610,195 L 600,285 L 555,280 Z", cx: 585, cy: 240, adj: ["MI", "IL", "KY", "OH"], ocean: [] },
+  OH: { name: "Ohio", path: "M 610,195 L 665,195 L 650,275 L 600,270 Z", cx: 635, cy: 235, adj: ["MI", "IN", "KY", "WV", "PA"], ocean: [] },
+  KY: { name: "Kentucky", path: "M 540,285 L 645,280 L 635,325 L 530,325 Z", cx: 590, cy: 305, adj: ["IL", "IN", "OH", "WV", "VA", "TN", "MO"], ocean: [] },
+  TN: { name: "Tennessee", path: "M 520,325 L 640,325 L 630,365 L 510,360 Z", cx: 580, cy: 345, adj: ["KY", "MO", "AR", "MS", "AL", "GA", "NC", "VA"], ocean: [] },
+  MS: { name: "Mississippi", path: "M 495,395 L 540,395 L 530,470 L 485,465 Z", cx: 515, cy: 430, adj: ["TN", "AR", "LA", "AL"], ocean: ["GULF_W"] },
+  AL: { name: "Alabama", path: "M 540,395 L 585,395 L 575,475 L 530,470 Z", cx: 560, cy: 430, adj: ["TN", "MS", "GA", "FL"], ocean: ["GULF_E"] },
+
+  // East Coast & Southeast
+  FL: { name: "Florida", path: "M 575,465 L 660,465 L 675,545 L 640,555 L 580,480 Z", cx: 640, cy: 510, adj: ["AL", "GA"], ocean: ["GULF_E", "ATLANTIC_S", "CARIBBEAN_TILE"] },
+  GA: { name: "Georgia", path: "M 585,385 L 650,380 L 645,465 L 575,465 Z", cx: 615, cy: 420, adj: ["FL", "AL", "TN", "NC", "SC"], ocean: ["ATLANTIC_S"] },
+  SC: { name: "South Carolina", path: "M 645,375 L 705,375 L 685,425 L 635,420 Z", cx: 670, cy: 395, adj: ["GA", "NC"], ocean: ["ATLANTIC_S"] },
+  NC: { name: "North Carolina", path: "M 630,335 L 730,335 L 705,380 L 625,375 Z", cx: 680, cy: 355, adj: ["VA", "TN", "GA", "SC"], ocean: ["ATLANTIC_MID"] },
+  VA: { name: "Virginia", path: "M 640,285 L 740,290 L 725,335 L 625,335 Z", cx: 685, cy: 310, adj: ["MD", "WV", "KY", "TN", "NC"], ocean: ["ATLANTIC_MID"] },
+  WV: { name: "West Virginia", path: "M 640,245 L 685,245 L 675,295 L 630,290 Z", cx: 660, cy: 270, adj: ["OH", "PA", "MD", "VA", "KY"], ocean: [] },
+  MD: { name: "Maryland", path: "M 685,250 L 745,250 L 740,285 L 680,280 Z", cx: 715, cy: 265, adj: ["PA", "DE", "VA", "WV"], ocean: ["ATLANTIC_MID"] },
+  DE: { name: "Delaware", path: "M 745,245 L 765,245 L 760,275 L 740,275 Z", cx: 752, cy: 260, adj: ["MD", "PA", "NJ"], ocean: ["ATLANTIC_MID"] },
+  PA: { name: "Pennsylvania", path: "M 665,195 L 755,200 L 745,250 L 655,245 Z", cx: 710, cy: 220, adj: ["NY", "NJ", "DE", "MD", "WV", "OH"], ocean: [] },
+  NJ: { name: "New Jersey", path: "M 755,205 L 780,205 L 770,265 L 745,260 Z", cx: 765, cy: 235, adj: ["NY", "DE", "PA"], ocean: ["ATLANTIC_N"] },
+  NY: { name: "New York", path: "M 690,140 L 780,145 L 765,205 L 675,200 Z", cx: 735, cy: 170, adj: ["VT", "MA", "CT", "NJ", "PA"], ocean: ["ATLANTIC_N"] },
+  CT: { name: "Connecticut", path: "M 770,175 L 805,175 L 800,205 L 765,205 Z", cx: 785, cy: 190, adj: ["NY", "MA", "RI"], ocean: ["ATLANTIC_N"] },
+  RI: { name: "Rhode Island", path: "M 805,175 L 825,175 L 820,205 L 800,205 Z", cx: 812, cy: 190, adj: ["CT", "MA"], ocean: ["ATLANTIC_N"] },
+  MA: { name: "Massachusetts", path: "M 770,150 L 835,150 L 825,175 L 765,175 Z", cx: 800, cy: 162, adj: ["VT", "NH", "RI", "CT", "NY"], ocean: ["ATLANTIC_N"] },
+  VT: { name: "Vermont", path: "M 765,100 L 795,100 L 790,155 L 760,155 Z", cx: 780, cy: 125, adj: ["NY", "NH", "MA"], ocean: [] },
+  NH: { name: "New Hampshire", path: "M 795,95 L 825,95 L 820,155 L 790,155 Z", cx: 808, cy: 125, adj: ["VT", "ME", "MA"], ocean: ["ATLANTIC_N"] },
+  ME: { name: "Maine", path: "M 825,70 L 880,70 L 870,145 L 815,145 Z", cx: 850, cy: 105, adj: ["NH"], ocean: ["ATLANTIC_N"] },
+
+  // Relocated offshore beneath mainland (Alaska, Hawaii, Puerto Rico)
+  AK: { name: "Alaska", path: "M 60,530 L 160,530 L 140,610 L 40,610 Z", cx: 100, cy: 570, adj: ["HI"], ocean: ["PACIFIC_S"] },
+  HI: { name: "Hawaii", path: "M 200,550 L 260,550 L 240,600 L 180,600 Z", cx: 220, cy: 575, adj: ["AK"], ocean: ["PACIFIC_S"] },
+  PR: { name: "Puerto Rico", path: "M 760,540 L 830,540 L 820,590 L 750,590 Z", cx: 790, cy: 565, adj: ["CARIBBEAN_TILE"], ocean: ["ATLANTIC_S", "CARIBBEAN_TILE"] },
+
+  // Annexable Ocean Hubs / Offshore Tiles
+  PACIFIC_NW: { name: "Salish Sea", path: "M 20,40 L 80,40 L 65,140 L 10,130 Z", cx: 45, cy: 85, adj: ["WA", "OR"], ocean: [], isOceanHub: true },
+  PACIFIC_S: { name: "Baja Trench", path: "M 20,220 L 60,220 L 50,380 L 10,360 Z", cx: 35, cy: 300, adj: ["CA", "AK", "HI"], ocean: [], isOceanHub: true },
+  GULF_W: { name: "Western Gulf", path: "M 320,520 L 470,500 L 460,570 L 310,580 Z", cx: 390, cy: 545, adj: ["TX", "LA", "MS"], ocean: ["GULF_E"], isOceanHub: true },
+  GULF_E: { name: "Eastern Gulf", path: "M 480,500 L 580,490 L 560,580 L 470,570 Z", cx: 525, cy: 535, adj: ["AL", "FL", "GULF_W", "CARIBBEAN_TILE"], ocean: [], isOceanHub: true },
+  CARIBBEAN_TILE: { name: "Havana Bank", path: "M 680,530 L 750,530 L 730,620 L 660,610 Z", cx: 705, cy: 570, adj: ["FL", "PR", "GULF_E"], ocean: [], isOceanHub: true },
+  ATLANTIC_S: { name: "Bermuda Basin", path: "M 710,410 L 810,410 L 790,510 L 690,500 Z", cx: 750, cy: 455, adj: ["FL", "GA", "SC", "PR"], ocean: ["ATLANTIC_MID"], isOceanHub: true },
+  ATLANTIC_MID: { name: "Mid-Atlantic Shelf", path: "M 770,290 L 880,290 L 850,390 L 740,390 Z", cx: 810, cy: 340, adj: ["NC", "VA", "MD", "DE", "ATLANTIC_S"], ocean: ["ATLANTIC_N"], isOceanHub: true },
+  ATLANTIC_N: { name: "Grand Banks", path: "M 830,160 L 960,160 L 920,280 L 790,270 Z", cx: 875, cy: 220, adj: ["ME", "NH", "MA", "CT", "RI", "NJ", "NY", "ATLANTIC_MID"], ocean: [], isOceanHub: true }
+};
+
+// Vibrant Colors Palette for States
+const VIBRANT_COLORS = [
+  "#e63946", "#f1a208", "#06d6a0", "#118ab2", "#8338ec",
+  "#ff006e", "#3a86ff", "#fb5607", "#ffbe0b", "#70e000",
+  "#00b4d8", "#9d4edd", "#48cae4", "#52b788", "#e07a5f",
+  "#3d5a80", "#ee6c4d", "#2ec4b6", "#e71d36", "#ff9f1c"
+];
+
+// Master Simulation State
+let stateData = {};
+let nations = {}; // ID keyed: { id, name, color, coins, territories: [], allies: [], mergedWith: null, isMergedSub: false }
+let year = 1;
+let isRunning = false;
+let simInterval = null;
+
+// Initialize All Entities
+function initSimulation() {
+  stateData = {};
+  nations = {};
+  let colorIdx = 0;
+
+  Object.keys(NODES).forEach((id) => {
+    const node = NODES[id];
+    const isOcean = !!node.isOceanHub;
+    const initialCoins = isOcean ? 150 : Math.floor(Math.random() * 800) + 400;
+
+    const nationObj = {
+      id: id,
+      name: node.name,
+      color: isOcean ? "#1f304a" : VIBRANT_COLORS[colorIdx % VIBRANT_COLORS.length],
+      coins: initialCoins,
+      territories: [id],
+      allies: [],
+      mergedWith: null,
+      isMergedSub: false,
+      capital: { x: node.cx, y: node.cy, currentRegion: id },
+      originalOwner: id,
+      isOceanHub: isOcean
+    };
+
+    if (!isOcean) colorIdx++;
+    nations[id] = nationObj;
+    stateData[id] = { owner: id };
+  });
+
+  renderMap();
+  populateDropdown();
+  updateUI();
+  addLog("Simulation initialized. 50 states + PR + offshore corridors ready.", "log-dodge");
+}
+
+// Render SVG Map elements
+function renderMap() {
+  const terrGroup = document.getElementById("territories");
+  const capGroup = document.getElementById("capitals");
+  const lblGroup = document.getElementById("labels");
+  const laneGroup = document.getElementById("ocean-lanes");
+
+  terrGroup.innerHTML = "";
+  capGroup.innerHTML = "";
+  lblGroup.innerHTML = "";
+  laneGroup.innerHTML = "";
+
+  // Render Ocean Lines
+  Object.keys(NODES).forEach(id => {
+    const node = NODES[id];
+    node.adj.forEach(targetId => {
+      const target = NODES[targetId];
+      if (node.isOceanHub || target.isOceanHub) {
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", node.cx);
+        line.setAttribute("y1", node.cy);
+        line.setAttribute("x2", target.cx);
+        line.setAttribute("y2", target.cy);
+        line.setAttribute("class", "ocean-lane");
+        laneGroup.appendChild(line);
+      }
+    });
+  });
+
+  // Render Polygons
+  Object.keys(NODES).forEach((id) => {
+    const node = NODES[id];
+    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    path.setAttribute("d", node.path);
+    path.setAttribute("id", "poly-" + id);
+    path.setAttribute("class", node.isOceanHub ? "state-poly ocean-border-tile" : "state-poly");
+    path.addEventListener("click", () => handleTerritoryClick(id));
+    terrGroup.appendChild(path);
+
+    // Labels
+    const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    txt.setAttribute("x", node.cx);
+    txt.setAttribute("y", node.cy + 3);
+    txt.setAttribute("id", "lbl-" + id);
+    txt.setAttribute("class", "state-label");
+    txt.textContent = id;
+    lblGroup.appendChild(txt);
+  });
+
+  // Render Capital Dots
+  Object.keys(nations).forEach((id) => {
+    const nation = nations[id];
+    if (nation.isOceanHub) return;
+
+    const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
+    circle.setAttribute("cx", nation.capital.x);
+    circle.setAttribute("cy", nation.capital.y);
+    circle.setAttribute("r", 5);
+    circle.setAttribute("id", "cap-" + id);
+    circle.setAttribute("class", "capital-marker");
+    circle.setAttribute("title", nation.name + " Capital");
+    circle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      manualMoveCapital(id);
+    });
+    capGroup.appendChild(circle);
+  });
+
+  paintMap();
+}
+
+// Paint current colors based on territory ownership
+function paintMap() {
+  Object.keys(NODES).forEach((id) => {
+    const ownerId = stateData[id].owner;
+    const ownerNation = nations[ownerId];
+    const poly = document.getElementById("poly-" + id);
+    if (poly && ownerNation) {
+      poly.setAttribute("fill", ownerNation.color);
+    }
+  });
+
+  // Update capitals visibility & positions
+  Object.keys(nations).forEach((id) => {
+    const nation = nations[id];
+    const capCircle = document.getElementById("cap-" + id);
+    if (!capCircle) return;
+
+    if (nation.territories.length === 0 || nation.isMergedSub) {
+      capCircle.style.display = "none";
+    } else {
+      capCircle.style.display = "block";
+      capCircle.setAttribute("cx", nation.capital.x);
+      capCircle.setAttribute("cy", nation.capital.y);
+    }
+  });
+}
+
+// --- INTELLIGENT CAPITAL DODGING ---
+// If enemy holds region adjacent to capital, move capital to a safer owned core region
+function checkCapitalDangerAndDodge(nationId) {
+  const nation = nations[nationId];
+  if (!nation || nation.territories.length <= 1) return;
+
+  const currentReg = nation.capital.currentRegion;
+  const adjacent = NODES[currentReg].adj;
+
+  // Check if any hostile borders this territory
+  const inDanger = adjacent.some(adjId => stateData[adjId].owner !== nationId);
+
+  if (inDanger) {
+    // Find safe haven within owned territories
+    const safeRegions = nation.territories.filter(tId => {
+      return !NODES[tId].adj.some(adjId => stateData[adjId].owner !== nationId);
+    });
+
+    const targetRegionId = safeRegions.length > 0 ? safeRegions[0] : nation.territories.find(t => t !== currentReg);
+
+    if (targetRegionId && targetRegionId !== currentReg) {
+      nation.capital.currentRegion = targetRegionId;
+      nation.capital.x = NODES[targetRegionId].cx + (Math.random() * 12 - 6);
+      nation.capital.y = NODES[targetRegionId].cy + (Math.random() * 12 - 6);
+
+      const capCircle = document.getElementById("cap-" + nationId);
+      if (capCircle) {
+        capCircle.classList.add("dodging");
+        setTimeout(() => capCircle.classList.remove("dodging"), 600);
+      }
+      addLog(`🚨 ${nation.name} capital evacuated from ${currentReg} to ${targetRegionId}!`, "log-dodge");
+    }
+  }
+}
+
+// Manual move capital via tap/click
+function manualMoveCapital(nationId) {
+  const nation = nations[nationId];
+  if (!nation || nation.territories.length === 0) return;
+  const currentIndex = nation.territories.indexOf(nation.capital.currentRegion);
+  const nextRegion = nation.territories[(currentIndex + 1) % nation.territories.length];
+  
+  nation.capital.currentRegion = nextRegion;
+  nation.capital.x = NODES[nextRegion].cx;
+  nation.capital.y = NODES[nextRegion].cy;
+  paintMap();
+  showToast(`${nation.name} relocated capital to ${nextRegion}!`);
+}
+
+// --- CORE SIMULATION STEP / NPC AI ---
+function stepTurn() {
+  year++;
+  document.getElementById("year-count").textContent = year;
+
+  // Economy income & natural coin drain (maintenance)
+  Object.keys(nations).forEach(id => {
+    const nation = nations[id];
+    if (nation.territories.length === 0 || nation.isMergedSub) return;
+
+    // Passive revenue by territory count
+    const income = (nation.territories.length * 45) + Math.floor(Math.random() * 20);
+    // Resource upkeep drain
+    const drain = Math.floor(nation.territories.length * 15);
+    nation.coins = Math.max(0, nation.coins + income - drain);
+
+    // Dynamic Capital Danger Dodge test
+    checkCapitalDangerAndDodge(id);
+  });
+
+  // Pick random active actor
+  const activeIds = Object.keys(nations).filter(id => nations[id].territories.length > 0 && !nations[id].isMergedSub);
+  if (activeIds.length <= 1) {
+    pauseSimulation();
+    showToast(`Simulation ended! Dominant faction: ${nations[activeIds[0]].name}`);
+    return;
+  }
+
+  const actorId = activeIds[Math.floor(Math.random() * activeIds.length)];
+  const actor = nations[actorId];
+
+  // AI Decision Engine
+  const roll = Math.random();
+
+  // 1. BUYOUT TERRITORY (Coins based)
+  if (roll < 0.28 && actor.coins >= 450) {
+    attemptTerritoryPurchase(actor);
+  }
+  // 2. FORM ALLIANCE
+  else if (roll < 0.45) {
+    attemptAlliance(actor, activeIds);
+  }
+  // 3. MERGE COALITION (If in common war or small neighbors uniting)
+  else if (roll < 0.58 && actor.territories.length < 3) {
+    attemptWartimeMerge(actor, activeIds);
+  }
+  // 4. REVOLT OCCURRENCE
+  else if (roll < 0.72) {
+    attemptRevolt(activeIds);
+  }
+  // 5. WAR CONQUEST / ANNEXATION
+  else {
+    attemptWarConquest(actor);
+  }
+
+  paintMap();
+  updateUI();
+}
+
+// ACTION: Buyout Territory
+function attemptTerritoryPurchase(actor) {
+  // Find neighboring foreign territory
+  const targets = findForeignNeighbors(actor);
+  if (targets.length === 0) return;
+
+  const targetTerrId = targets[Math.floor(Math.random() * targets.length)];
+  const targetOwnerId = stateData[targetTerrId].owner;
+  const seller = nations[targetOwnerId];
+
+  const price = 400 + (seller.territories.length * 50);
+  if (actor.coins >= price) {
+    actor.coins -= price;
+    seller.coins += Math.floor(price * 0.8); // 20% lost to administrative waste
+
+    transferTerritory(targetTerrId, actor.id);
+    addLog(`💰 ${actor.name} purchased ${targetTerrId} from ${seller.name} for ${price} coins!`, "log-buy");
+  }
+}
+
+// ACTION: Form Alliance
+function attemptAlliance(actor, activeIds) {
+  const candidates = activeIds.filter(id => id !== actor.id && !actor.allies.includes(id) && !actor.allies.includes(actor.id));
+  if (candidates.length === 0) return;
+
+  const allyId = candidates[Math.floor(Math.random() * candidates.length)];
+  actor.allies.push(allyId);
+  nations[allyId].allies.push(actor.id);
+  addLog(`🤝 Alliance forged between ${actor.name} and ${nations[allyId].name}!`, "log-alliance");
+}
+
+// ACTION: War & Annexation
+function attemptWarConquest(actor) {
+  const neighbors = findForeignNeighbors(actor);
+  if (neighbors.length === 0) return;
+
+  const targetTerrId = neighbors[Math.floor(Math.random() * neighbors.length)];
+  const defenderId = stateData[targetTerrId].owner;
+  const defender = nations[defenderId];
+
+  // If Allied, break alliance or abort
+  if (actor.allies.includes(defenderId)) {
+    if (Math.random() < 0.6) return;
+    actor.allies = actor.allies.filter(a => a !== defenderId);
+    defender.allies = defender.allies.filter(a => a !== actor.id);
+    addLog(`💔 Alliance shattered: ${actor.name} betrayed ${defender.name}!`, "log-war");
+  }
+
+  // Combat comparison based on territories & coins
+  const attackerPower = (actor.territories.length * 15) + (actor.coins * 0.1) + (Math.random() * 50);
+  const defenderPower = (defender.territories.length * 15) + (defender.coins * 0.1) + (Math.random() * 50);
+
+  if (attackerPower >= defenderPower * 0.85) {
+    // Attacker takes territory
+    transferTerritory(targetTerrId, actor.id);
+    actor.coins = Math.max(0, actor.coins - 50); // military expenditure
+
+    // Check if capital was captured
+    if (defender.capital.currentRegion === targetTerrId) {
+      if (defender.territories.length > 0) {
+        // Move capital to another region
+        const fallback = defender.territories[0];
+        defender.capital.currentRegion = fallback;
+        defender.capital.x = NODES[fallback].cx;
+        defender.capital.y = NODES[fallback].cy;
+        addLog(`⚔️ ${actor.name} took ${defender.name}'s capital at ${targetTerrId}! Capital routed to ${fallback}!`, "log-war");
+      } else {
+        // Full annexation
+        addLog(`💀 ${defender.name} was completely DESTROYED by ${actor.name}!`, "log-war");
+      }
+    } else {
+      addLog(`⚔️ ${actor.name} conquered ${targetTerrId} from ${defender.name}!`, "log-war");
+    }
+  } else {
+    // Attacker repelled with financial loss
+    actor.coins = Math.max(0, actor.coins - 120);
+    addLog(`🛡️ ${defender.name} repelled invasion of ${targetTerrId} by ${actor.name}!`, "log-dodge");
+  }
+}
+
+// ACTION: Wartime Emergency Merger
+function attemptWartimeMerge(actor, activeIds) {
+  const neighbors = findForeignNeighbors(actor);
+  const friendlies = neighbors.filter(id => {
+    const owner = stateData[id].owner;
+    return owner !== actor.id && nations[owner].territories.length <= 3;
+  });
+
+  if (friendlies.length === 0) return;
+  const partnerOwnerId = stateData[friendlies[0]].owner;
+  const partner = nations[partnerOwnerId];
+
+  // Merge into actor
+  const mergedTerritories = [...partner.territories];
+  mergedTerritories.forEach(tId => {
+    transferTerritory(tId, actor.id);
+  });
+
+  partner.isMergedSub = true;
+  partner.mergedWith = actor.id;
+  actor.coins += partner.coins;
+  partner.coins = 0;
+
+  addLog(`🧬 COALITION MERGE: ${partner.name} merged into ${actor.name} to survive!`, "log-merge");
+}
+
+// ACTION: Revolts & Splinter States
+function attemptRevolt(activeIds) {
+  // Pick an empire with multiple territories
+  const empires = activeIds.filter(id => nations[id].territories.length >= 3);
+  if (empires.length === 0) return;
+
+  const targetEmpire = nations[empires[Math.floor(Math.random() * empires.length)]];
+  const eligibleRevoltTerritories = targetEmpire.territories.filter(tId => tId !== targetEmpire.capital.currentRegion);
+
+  if (eligibleRevoltTerritories.length === 0) return;
+  const revoltTerrId = eligibleRevoltTerritories[Math.floor(Math.random() * eligibleRevoltTerritories.length)];
+
+  // Check if territory was a merged sub-state or original territory
+  const originalId = nations[revoltTerrId] ? revoltTerrId : revoltTerrId;
+  const revivedNation = nations[originalId];
+
+  if (revivedNation) {
+    revivedNation.isMergedSub = false;
+    revivedNation.mergedWith = null;
+    revivedNation.coins = 300;
+    revivedNation.capital.currentRegion = revoltTerrId;
+    revivedNation.capital.x = NODES[revoltTerrId].cx;
+    revivedNation.capital.y = NODES[revoltTerrId].cy;
+
+    transferTerritory(revoltTerrId, revivedNation.id);
+    addLog(`🔥 REVOLT! ${revivedNation.name} broke free from ${targetEmpire.name} in ${revoltTerrId}!`, "log-revolt");
+  }
+}
+
+// Helper: Transfer territory
+function transferTerritory(territoryId, newOwnerId) {
+  const oldOwnerId = stateData[territoryId].owner;
+  if (oldOwnerId && nations[oldOwnerId]) {
+    nations[oldOwnerId].territories = nations[oldOwnerId].territories.filter(t => t !== territoryId);
+  }
+  stateData[territoryId].owner = newOwnerId;
+  if (!nations[newOwnerId].territories.includes(territoryId)) {
+    nations[newOwnerId].territories.push(territoryId);
+  }
+}
+
+// Helper: Find foreign neighboring territories
+function findForeignNeighbors(actor) {
+  const neighbors = new Set();
+  actor.territories.forEach(tId => {
+    const node = NODES[tId];
+    if (node && node.adj) {
+      node.adj.forEach(adjId => {
+        if (stateData[adjId].owner !== actor.id) {
+          neighbors.add(adjId);
+        }
+      });
+    }
+  });
+  return Array.from(neighbors);
+}
+
+// Handle Direct Click on Territory (Tablet interactive conquest)
+function handleTerritoryClick(territoryId) {
+  const ownerId = stateData[territoryId].owner;
+  const owner = nations[ownerId];
+  showToast(`${NODES[territoryId].name} (${territoryId}) - Held by ${owner.name} | Coins: ${owner.coins}`);
+}
+
+// --- UI & LEADERBOARDS ---
+function updateUI() {
+  const activeNations = Object.values(nations).filter(n => n.territories.length > 0 && !n.isMergedSub);
+  document.getElementById("nation-count").textContent = activeNations.length;
+
+  // Update Leaderboard
+  const sorted = [...activeNations].sort((a, b) => (b.territories.length * 100 + b.coins) - (a.territories.length * 100 + a.coins));
+  const lbContainer = document.getElementById("lb-container");
+  lbContainer.innerHTML = "";
+
+  sorted.forEach((n, idx) => {
+    const row = document.createElement("div");
+    row.className = "lb-row";
+    row.innerHTML = `
+      <div class="lb-left">
+        <span>#${idx+1}</span>
+        <div class="color-dot" style="background:${n.color}"></div>
+        <strong>${n.name}</strong>
+      </div>
+      <div>
+        <span style="color:var(--text-dim);margin-right:8px;">${n.territories.length} terr</span>
+        <span style="color:var(--accent-gold);font-weight:700;">${n.coins}g</span>
+      </div>
+    `;
+    lbContainer.appendChild(row);
+  });
+}
+
+function addLog(msg, typeClass) {
+  const container = document.getElementById("feed-container");
+  const entry = document.createElement("div");
+  entry.className = `log-entry ${typeClass || ''}`;
+  entry.textContent = `[Y${year}] ${msg}`;
+  container.prepend(entry);
+  if (container.children.length > 45) {
+    container.removeChild(container.lastChild);
+  }
+}
+
+function showToast(text) {
+  const toast = document.getElementById("toast");
+  toast.textContent = text;
+  toast.style.opacity = "1";
+  setTimeout(() => toast.style.opacity = "0", 2200);
+}
+
+function populateDropdown() {
+  const sel = document.getElementById("state-select");
+  sel.innerHTML = '<option value="">-- Choose State to Fund --</option>';
+  Object.keys(nations).forEach(id => {
+    if (!nations[id].isOceanHub) {
+      const opt = document.createElement("option");
+      opt.value = id;
+      opt.textContent = nations[id].name;
+      sel.appendChild(opt);
+    }
+  });
+
+  sel.addEventListener("change", (e) => {
+    const chosen = e.target.value;
+    if (chosen && nations[chosen]) {
+      nations[chosen].coins += 5000;
+      addLog(`👑 ROYAL GRANT: ${nations[chosen].name} was manually granted 5,000 coins!`, "log-buy");
+      updateUI();
+      paintMap();
+    }
+  });
+}
+
+// Controller Handlers
+function toggleSimulation() {
+  if (isRunning) {
+    pauseSimulation();
+  } else {
+    isRunning = true;
+    document.getElementById("sim-status").textContent = "RUNNING";
+    document.getElementById("sim-status").style.color = "var(--accent-green)";
+    simInterval = setInterval(stepTurn, 650);
+  }
+}
+
+function pauseSimulation() {
+  isRunning = false;
+  clearInterval(simInterval);
+  document.getElementById("sim-status").textContent = "PAUSED";
+  document.getElementById("sim-status").style.color = "#fff";
+}
+
+document.getElementById("btn-toggle").addEventListener("click", toggleSimulation);
+document.getElementById("btn-step").addEventListener("click", stepTurn);
+
+// Randomly pick which nation has the most coins
+document.getElementById("btn-random-rich").addEventListener("click", () => {
+  const activeIds = Object.keys(nations).filter(id => nations[id].territories.length > 0 && !nations[id].isMergedSub && !nations[id].isOceanHub);
+  if (activeIds.length === 0) return;
+  const pickedId = activeIds[Math.floor(Math.random() * activeIds.length)];
+  nations[pickedId].coins += Math.floor(Math.random() * 6000) + 4000;
+  addLog(`🎰 LOBBY JACKPOT: ${nations[pickedId].name} struck gold and holds the treasury crown!`, "log-buy");
+  showToast(`${nations[pickedId].name} is now filthy rich!`);
+  updateUI();
+});
+
+// Waste resources button (lose coins)
+document.getElementById("btn-drain").addEventListener("click", () => {
+  Object.keys(nations).forEach(id => {
+    const nation = nations[id];
+    const lost = Math.floor(nation.coins * 0.45);
+    nation.coins = Math.max(0, nation.coins - lost);
+  });
+  addLog("📉 ECONOMIC RECESSION: All active nations wasted 45% of their gold on failed logistics!", "log-war");
+  showToast("Mass resource drain applied!");
+  updateUI();
+});
+
+// Tab Switcher
+document.getElementById("tab-log").addEventListener("click", () => {
+  document.getElementById("tab-log").classList.add("active");
+  document.getElementById("tab-lb").classList.remove("active");
+  document.getElementById("feed-container").style.display = "flex";
+  document.getElementById("lb-container").style.display = "none";
+});
+
+document.getElementById("tab-lb").addEventListener("click", () => {
+  document.getElementById("tab-lb").classList.add("active");
+  document.getElementById("tab-log").classList.remove("active");
+  document.getElementById("feed-container").style.display = "none";
+  document.getElementById("lb-container").style.display = "flex";
+});
+
+// Boot simulator
+window.addEventListener("DOMContentLoaded", initSimulation);
+</script>
+</body>
+</html>
