@@ -146,13 +146,13 @@
   }
 
   #sidebar {
-    width: 360px;
+    width: 380px;
     background: var(--panel-bg);
     border-left: 2px solid var(--border-color);
     display: flex;
     flex-direction: column;
     padding: 14px;
-    gap: 12px;
+    gap: 10px;
     backdrop-filter: blur(10px);
     z-index: 10;
   }
@@ -162,7 +162,7 @@
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid var(--border-color);
-    padding-bottom: 10px;
+    padding-bottom: 8px;
   }
 
   .panel-title {
@@ -186,15 +186,15 @@
   .controls-grid {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
+    gap: 6px;
   }
 
   button.btn {
     background: #192434;
     color: #fff;
     border: 1px solid var(--border-color);
-    padding: 10px;
-    font-size: 0.82rem;
+    padding: 9px;
+    font-size: 0.8rem;
     font-weight: 800;
     border-radius: 8px;
     cursor: pointer;
@@ -220,11 +220,11 @@
   .select-row {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    gap: 3px;
   }
 
   .select-row label {
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     color: var(--text-dim);
     font-weight: 800;
   }
@@ -233,31 +233,34 @@
     background: #0f1624;
     border: 1px solid var(--border-color);
     color: #fff;
-    padding: 8px 10px;
+    padding: 7px 10px;
     border-radius: 6px;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     outline: none;
     font-weight: 700;
   }
 
+  /* 4 Tabs Menu */
   .tabs {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
     background: #0d1421;
     border-radius: 6px;
     padding: 2px;
     border: 1px solid var(--border-color);
+    gap: 2px;
   }
 
   .tab-btn {
-    flex: 1;
     background: transparent;
     border: none;
     color: var(--text-dim);
-    padding: 7px;
-    font-size: 0.78rem;
+    padding: 6px 2px;
+    font-size: 0.7rem;
     font-weight: 800;
     cursor: pointer;
     border-radius: 4px;
+    text-align: center;
   }
 
   .tab-btn.active {
@@ -282,7 +285,7 @@
     border-radius: 4px;
     background: #101724;
     border-left: 3px solid #64748b;
-    font-size: 0.76rem;
+    font-size: 0.74rem;
     line-height: 1.35;
   }
 
@@ -292,18 +295,19 @@
   .log-revolt { border-left-color: #f97316; }
   .log-alliance { border-left-color: var(--accent-green); }
   .log-dodge { border-left-color: #38bdf8; }
+  .log-bailout { border-left-color: #eab308; background: #161a22; }
 
-  .lb-row {
+  .data-row {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 5px 8px;
+    padding: 6px 8px;
     background: #101724;
-    border-radius: 4px;
-    font-size: 0.78rem;
+    border-radius: 5px;
+    font-size: 0.76rem;
   }
 
-  .lb-left {
+  .row-left {
     display: flex;
     align-items: center;
     gap: 6px;
@@ -313,6 +317,42 @@
     width: 10px;
     height: 10px;
     border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  .alliance-card {
+    background: #101724;
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 8px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+
+  .alliance-title {
+    font-weight: 800;
+    color: var(--accent-gold);
+    font-size: 0.8rem;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  .alliance-members {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .member-tag {
+    background: #192434;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 4px;
   }
 </style>
 </head>
@@ -374,13 +414,18 @@
       </select>
     </div>
 
+    <!-- 4 Dashboard Menus -->
     <div class="tabs">
-      <button class="tab-btn active" id="tab-log">BATTLE FEED</button>
-      <button class="tab-btn" id="tab-lb">LEADERBOARD</button>
+      <button class="tab-btn active" id="tab-log">FEED</button>
+      <button class="tab-btn" id="tab-lb">RANK</button>
+      <button class="tab-btn" id="tab-sizes">SIZES</button>
+      <button class="tab-btn" id="tab-alliances">ALLIANCES</button>
     </div>
 
     <div class="scroll-container" id="feed-container"></div>
     <div class="scroll-container" id="lb-container" style="display:none;"></div>
+    <div class="scroll-container" id="sizes-container" style="display:none;"></div>
+    <div class="scroll-container" id="alliances-container" style="display:none;"></div>
   </div>
 </div>
 
@@ -389,6 +434,7 @@ const COLS = 48;
 const ROWS = 30;
 const CELL_W = 20;
 const CELL_H = 20;
+const TOTAL_MAP_CELLS = 827;
 
 const COASTLINE_MASK = [
   // 0-4
@@ -495,7 +541,7 @@ let nations = {};
 let year = 1;
 let isRunning = false;
 let simInterval = null;
-let lastRevoltYear = 0; // Revolt cooldown throttle
+let lastRevoltYear = 0;
 
 function initSimulation() {
   grid = [];
@@ -509,7 +555,7 @@ function initSimulation() {
       id: id,
       name: def.name,
       color: VIBRANT_COLORS[colorIdx % VIBRANT_COLORS.length],
-      coins: Math.floor(Math.random() * 500) + 300,
+      coins: Math.floor(Math.random() * 450) + 250,
       cells: [],
       allies: [],
       mergedWith: null,
@@ -579,10 +625,9 @@ function initSimulation() {
   renderMap();
   populateDropdown();
   updateUI();
-  addLog("Simulation initialized. Void capital protection & calm revolt pacing active.", "log-dodge");
+  addLog("Simulator initialized with bankruptcy & alliance bailout mechanics.", "log-dodge");
 }
 
-// STRICT NO-VOID CENTROID: Capitals only snap to physical land cells owned by the state
 function recalcCentroid(nationId) {
   const nation = nations[nationId];
   if (!nation || nation.cells.length === 0) return;
@@ -596,7 +641,6 @@ function recalcCentroid(nationId) {
   const avgCol = sumCol / nation.cells.length;
   const avgRow = sumRow / nation.cells.length;
 
-  // Find the real owned land cell closest to the mathematical center
   let bestCell = nation.cells[0];
   let minDist = 999999;
 
@@ -731,7 +775,6 @@ function checkCapitalDangerAndDodge(nationId) {
   }
 
   if (directlyThreatenedBy) {
-    // Only choose from verified physical land cells owned by the state
     const safeCells = nation.cells.filter(cell => {
       return dirs.every(([dc, dr]) => {
         const nc = cell.col + dc;
@@ -780,7 +823,7 @@ function executeCapitalAnnexation(victimId, conquerorId) {
     if (rect) rect.setAttribute("fill", "#ffffff");
   });
 
-  addLog(`💥 CAPITAL OVERRUN: ${conqueror.name} seized ${victim.name}'s capital! ${victim.name} is ELIMINATED!`, "log-war");
+  addLog(`💥 CAPITAL OVERRUN: ${conqueror.name} captured ${victim.name}'s capital! ${victim.name} is ELIMINATED!`, "log-war");
   showToast(`${victim.name} fell to ${conqueror.name}!`);
 
   setTimeout(() => {
@@ -826,7 +869,7 @@ function distributeEliminatedTerritory(victimId, primaryConquerorId) {
     }
   });
 
-  addLog(`🗺️ SURROUNDING STATES DIVIDED ${victim.name}'s remaining lands!`, "log-buy");
+  addLog(`🗺️ SURROUNDING STATES DIVIDED ${victim.name}'s lands!`, "log-buy");
 }
 
 function manualMoveCapital(nationId) {
@@ -841,16 +884,51 @@ function manualMoveCapital(nationId) {
   showToast(`${nation.name} manually moved capital!`);
 }
 
+// Check Bankruptcy (0 Coins Rule) & Alliance Bailouts / Capital Vulnerability
+function handleBankruptcies(activeIds) {
+  activeIds.forEach(id => {
+    const nation = nations[id];
+    if (nation.coins > 0) return;
+
+    // Nation is at 0 Coins! Check if alliance can bail them out
+    const wealthyAllies = nation.allies
+      .filter(allyId => nations[allyId] && !nations[allyId].isEliminated && nations[allyId].coins >= 180);
+
+    if (wealthyAllies.length > 0) {
+      const donor = nations[wealthyAllies[Math.floor(Math.random() * wealthyAllies.length)]];
+      // Randomly choose small or big bailout
+      const isBig = Math.random() < 0.35 && donor.coins >= 450;
+      const donation = isBig ? Math.floor(Math.random() * 250) + 300 : Math.floor(Math.random() * 100) + 80;
+
+      donor.coins -= donation;
+      nation.coins += donation;
+      addLog(`🤝 ALLIANCE BAILOUT: ${donor.name} sent ${donation}g to bankrupt capital of ${nation.name}!`, "log-bailout");
+      return;
+    }
+
+    // No allies to save them! 0 coin nation is defenseless and vulnerable to hostile capital invasion
+    const neighbors = findFrontierNeighbors(nation);
+    const hostileNeighbors = neighbors.filter(nid => !nation.allies.includes(nid) && nations[nid].coins > 30);
+
+    if (hostileNeighbors.length > 0 && Math.random() < 0.35) {
+      const invaderId = hostileNeighbors[Math.floor(Math.random() * hostileNeighbors.length)];
+      addLog(`💀 BANKRUPTCY OVERRUN: ${nation.name} had 0 coins and fell to ${nations[invaderId].name}!`, "log-war");
+      executeCapitalAnnexation(id, invaderId);
+    }
+  });
+}
+
 function stepTurn() {
   year++;
   document.getElementById("year-count").textContent = year;
 
+  // Economy upkeep & income
   Object.keys(nations).forEach(id => {
     const nation = nations[id];
     if (nation.cells.length === 0 || nation.isMergedSub || nation.isEliminated) return;
 
-    const baseIncome = Math.floor(nation.cells.length * 1.8) + 8;
-    const militaryUpkeep = Math.floor(nation.cells.length * 1.4);
+    const baseIncome = Math.floor(nation.cells.length * 1.7) + 6;
+    const militaryUpkeep = Math.floor(nation.cells.length * 1.5);
     nation.coins = Math.max(0, nation.coins + baseIncome - militaryUpkeep);
 
     checkCapitalDangerAndDodge(id);
@@ -863,6 +941,9 @@ function stepTurn() {
     return;
   }
 
+  // Handle 0-Coin Bankruptcy Rules & Alliance Bailouts
+  handleBankruptcies(activeIds);
+
   const actionsThisTurn = Math.min(activeIds.length, Math.floor(Math.random() * 3) + 3);
 
   for (let a = 0; a < actionsThisTurn; a++) {
@@ -871,10 +952,16 @@ function stepTurn() {
 
     const actorId = activeIds[Math.floor(Math.random() * activeIds.length)];
     const actor = nations[actorId];
+
+    // RULE: States with 0 coins CANNOT invade anyone!
+    if (actor.coins <= 0) {
+      continue;
+    }
+
     const roll = Math.random();
 
     // 1. Buyout Frontier Chunks
-    if (roll < 0.22 && actor.coins >= 350) {
+    if (roll < 0.20 && actor.coins >= 350) {
       attemptChunkPurchase(actor);
     }
     // 2. Alliances
@@ -885,11 +972,11 @@ function stepTurn() {
     else if (roll < 0.50 && actor.cells.length < 18) {
       attemptWartimeMerge(actor, activeIds);
     }
-    // 4. Heavily Throttled Revolts (Only 2% chance and minimum 5 years cooldown)
-    else if (roll < 0.52 && (year - lastRevoltYear >= 5)) {
+    // 4. Rare Revolts (cooldown throttled)
+    else if (roll < 0.52 && (year - lastRevoltYear >= 6)) {
       attemptRevolt(activeIds);
     }
-    // 5. Military Offensive & Gold Deduction
+    // 5. Military Offensive
     else {
       attemptMilitaryPush(actor, activeIds);
     }
@@ -900,11 +987,13 @@ function stepTurn() {
 }
 
 function attemptMilitaryPush(actor, activeIds) {
+  if (actor.coins <= 0) return; // Cannot invade with 0 coins!
+
   let frontierCells = findFrontierCells(actor);
 
   if (frontierCells.length === 0) {
     const foreignNations = activeIds.filter(id => id !== actor.id && !actor.allies.includes(id));
-    if (foreignNations.length === 0 || actor.coins < 200) return;
+    if (foreignNations.length === 0 || actor.coins < 220) return;
 
     const targetNationId = foreignNations[Math.floor(Math.random() * foreignNations.length)];
     const targetNation = nations[targetNationId];
@@ -912,7 +1001,7 @@ function attemptMilitaryPush(actor, activeIds) {
 
     const navalLanding = targetNation.cells[Math.floor(Math.random() * targetNation.cells.length)];
     frontierCells = [navalLanding];
-    addLog(`⚓ NAVAL INVASION: ${actor.name} mounted overseas landing on ${targetNation.name}!`, "log-war");
+    addLog(`⚓ NAVAL INVASION: ${actor.name} mounted overseas assault on ${targetNation.name}!`, "log-war");
   }
 
   const target = frontierCells[Math.floor(Math.random() * frontierCells.length)];
@@ -1002,7 +1091,7 @@ function attemptAlliance(actor, activeIds) {
   const allyId = candidates[Math.floor(Math.random() * candidates.length)];
   actor.allies.push(allyId);
   nations[allyId].allies.push(actor.id);
-  addLog(`🤝 Alliance: ${actor.name} & ${nations[allyId].name}!`, "log-alliance");
+  addLog(`🤝 Alliance forged: ${actor.name} & ${nations[allyId].name}!`, "log-alliance");
 }
 
 function attemptWartimeMerge(actor, activeIds) {
@@ -1024,10 +1113,9 @@ function attemptWartimeMerge(actor, activeIds) {
   partner.coins = 0;
 
   recalcCentroid(actor.id);
-  addLog(`🧬 MERGER: ${partner.name} merged into ${actor.name} for mutual survival!`, "log-merge");
+  addLog(`🧬 MERGER: ${partner.name} merged into ${actor.name} for defense!`, "log-merge");
 }
 
-// Controlled, Rare Revolts (Only huge empires 40+ cells with cooldown)
 function attemptRevolt(activeIds) {
   const giantEmpires = activeIds.filter(id => nations[id].cells.length >= 40);
   if (giantEmpires.length === 0) return;
@@ -1054,8 +1142,8 @@ function attemptRevolt(activeIds) {
 
   recalcCentroid(rebel.id);
   recalcCentroid(targetEmpire.id);
-  lastRevoltYear = year; // Set cooldown
-  addLog(`🔥 RARE REBELLION: ${rebel.name} declared independence from ${targetEmpire.name} taking ${revoltSize}px!`, "log-revolt");
+  lastRevoltYear = year;
+  addLog(`🔥 REBELLION: ${rebel.name} declared independence from ${targetEmpire.name}!`, "log-revolt");
 }
 
 function findFrontierCells(actor) {
@@ -1076,6 +1164,25 @@ function findFrontierCells(actor) {
   return frontiers;
 }
 
+function findFrontierNeighbors(actor) {
+  const neighbors = new Set();
+  const dirs = [[0,1], [0,-1], [1,0], [-1,0]];
+
+  actor.cells.forEach(cell => {
+    dirs.forEach(([dc, dr]) => {
+      const nc = cell.col + dc;
+      const nr = cell.row + dr;
+      if (nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS) {
+        const o = grid[nr][nc];
+        if (o && o !== actor.id && !nations[o].isEliminated) {
+          neighbors.add(o);
+        }
+      }
+    });
+  });
+  return Array.from(neighbors);
+}
+
 function handleCellClick(col, row) {
   const ownerId = grid[row][col];
   if (!ownerId) return;
@@ -1083,20 +1190,64 @@ function handleCellClick(col, row) {
   showToast(`${owner.name} (${ownerId}) | Cells: ${owner.cells.length} | Gold: ${owner.coins}g`);
 }
 
+// Procedural Alliance Pacts Builder
+function getFormedAlliances(activeNations) {
+  const visited = new Set();
+  const pacts = [];
+
+  const pactPrefixes = ["Grand", "United", "Federal", "Atlantic", "Pacific", "Continental", "Sovereign", "Mutual"];
+  const pactSuffixes = ["Coalition", "Pact", "League", "Alliance", "Accord", "Entente", "Treaty"];
+
+  activeNations.forEach(nation => {
+    if (visited.has(nation.id)) return;
+
+    if (nation.allies.length > 0) {
+      // Find connected alliance graph component
+      const allianceMembers = [nation];
+      visited.add(nation.id);
+
+      nation.allies.forEach(allyId => {
+        if (!visited.has(allyId) && nations[allyId] && !nations[allyId].isEliminated) {
+          allianceMembers.push(nations[allyId]);
+          visited.add(allyId);
+        }
+      });
+
+      if (allianceMembers.length > 1) {
+        const lead = allianceMembers[0];
+        const hash = (lead.name.charCodeAt(0) + allianceMembers.length) % pactPrefixes.length;
+        const name = `${pactPrefixes[hash]} ${lead.name} ${pactSuffixes[hash % pactSuffixes.length]}`;
+        const totalPx = allianceMembers.reduce((sum, m) => sum + m.cells.length, 0);
+        const totalGold = allianceMembers.reduce((sum, m) => sum + m.coins, 0);
+
+        pacts.push({
+          name: name,
+          members: allianceMembers,
+          totalPx: totalPx,
+          totalGold: totalGold
+        });
+      }
+    }
+  });
+
+  return pacts.sort((a, b) => b.totalPx - a.totalPx);
+}
+
 function updateUI() {
   const activeNations = Object.values(nations).filter(n => n.cells.length > 0 && !n.isMergedSub && !n.isEliminated);
   document.getElementById("nation-count").textContent = activeNations.length;
 
-  const sorted = [...activeNations].sort((a, b) => (b.cells.length * 100 + b.coins) - (a.cells.length * 100 + a.coins));
+  // 1. Leaderboard (Rank by overall power)
+  const rankSorted = [...activeNations].sort((a, b) => (b.cells.length * 100 + b.coins) - (a.cells.length * 100 + a.coins));
   const lbContainer = document.getElementById("lb-container");
   lbContainer.innerHTML = "";
 
-  sorted.forEach((n, idx) => {
+  rankSorted.forEach((n, idx) => {
     const row = document.createElement("div");
-    row.className = "lb-row";
+    row.className = "data-row";
     row.innerHTML = `
-      <div class="lb-left">
-        <span>#${idx+1}</span>
+      <div class="row-left">
+        <span style="color:var(--text-dim);width:20px;">#${idx+1}</span>
         <div class="color-dot" style="background:${n.color}"></div>
         <strong>${n.name}</strong>
       </div>
@@ -1107,6 +1258,58 @@ function updateUI() {
     `;
     lbContainer.appendChild(row);
   });
+
+  // 2. Country Sizes Tab (Rank strictly by land area / percentage)
+  const sizeSorted = [...activeNations].sort((a, b) => b.cells.length - a.cells.length);
+  const sizesContainer = document.getElementById("sizes-container");
+  sizesContainer.innerHTML = "";
+
+  sizeSorted.forEach((n, idx) => {
+    const pct = ((n.cells.length / TOTAL_MAP_CELLS) * 100).toFixed(1);
+    const row = document.createElement("div");
+    row.className = "data-row";
+    row.innerHTML = `
+      <div class="row-left">
+        <span style="color:var(--text-dim);width:20px;">#${idx+1}</span>
+        <div class="color-dot" style="background:${n.color}"></div>
+        <strong>${n.name}</strong>
+      </div>
+      <div>
+        <span style="color:var(--accent-green);font-weight:800;margin-right:8px;">${pct}%</span>
+        <span style="color:var(--text-dim);font-weight:700;">${n.cells.length} px</span>
+      </div>
+    `;
+    sizesContainer.appendChild(row);
+  });
+
+  // 3. Alliances Tab (Sizes of Alliances & Names)
+  const alliancesContainer = document.getElementById("alliances-container");
+  alliancesContainer.innerHTML = "";
+  const pacts = getFormedAlliances(activeNations);
+
+  if (pacts.length === 0) {
+    alliancesContainer.innerHTML = '<div style="padding:15px;color:var(--text-dim);text-align:center;font-size:0.8rem;">No active military alliances. Total chaos reigns.</div>';
+  } else {
+    pacts.forEach(p => {
+      const card = document.createElement("div");
+      card.className = "alliance-card";
+      card.innerHTML = `
+        <div class="alliance-title">
+          <span>🛡️ ${p.name}</span>
+          <span style="color:var(--accent-green);">${p.totalPx} px (${p.totalGold}g)</span>
+        </div>
+        <div class="alliance-members">
+          ${p.members.map(m => `
+            <div class="member-tag">
+              <span class="color-dot" style="background:${m.color};width:7px;height:7px;"></span>
+              <span>${m.id}</span>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      alliancesContainer.appendChild(card);
+    });
+  }
 }
 
 function addLog(msg, typeClass) {
@@ -1190,18 +1393,23 @@ document.getElementById("btn-drain").addEventListener("click", () => {
   updateUI();
 });
 
-document.getElementById("tab-log").addEventListener("click", () => {
-  document.getElementById("tab-log").classList.add("active");
-  document.getElementById("tab-lb").classList.remove("active");
-  document.getElementById("feed-container").style.display = "flex";
-  document.getElementById("lb-container").style.display = "none";
-});
+// 4 Tabs Switching
+const tabButtons = [
+  { btn: "tab-log", panel: "feed-container" },
+  { btn: "tab-lb", panel: "lb-container" },
+  { btn: "tab-sizes", panel: "sizes-container" },
+  { btn: "tab-alliances", panel: "alliances-container" }
+];
 
-document.getElementById("tab-lb").addEventListener("click", () => {
-  document.getElementById("tab-lb").classList.add("active");
-  document.getElementById("tab-log").classList.remove("active");
-  document.getElementById("feed-container").style.display = "none";
-  document.getElementById("lb-container").style.display = "flex";
+tabButtons.forEach(tab => {
+  document.getElementById(tab.btn).addEventListener("click", () => {
+    tabButtons.forEach(t => {
+      document.getElementById(t.btn).classList.remove("active");
+      document.getElementById(t.panel).style.display = "none";
+    });
+    document.getElementById(tab.btn).classList.add("active");
+    document.getElementById(tab.panel).style.display = "flex";
+  });
 });
 
 window.addEventListener("DOMContentLoaded", initSimulation);
