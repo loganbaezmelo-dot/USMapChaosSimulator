@@ -295,7 +295,7 @@
   .log-alliance { border-left-color: var(--accent-green); }
   .log-dodge { border-left-color: #38bdf8; }
   .log-bailout { border-left-color: #eab308; background: #161a22; }
-  .log-skirmish { border-left-color: #ec4899; }
+  .log-decap { border-left-color: #ff0055; background: #1f101a; }
 
   .data-row {
     display: flex;
@@ -560,6 +560,7 @@ function initSimulation() {
       mergedWith: null,
       isMergedSub: false,
       isEliminated: false,
+      targetFocus: null, // Tracks if currently focusing on eliminating a smaller state
       capital: { x: 0, y: 0, col: def.seed[0], row: def.seed[1] }
     };
     colorIdx++;
@@ -624,7 +625,7 @@ function initSimulation() {
   renderMap();
   populateDropdown();
   updateUI();
-  addLog("Simulator initialized with automatic proximity invasions & retaliation.", "log-dodge");
+  addLog("Simulator initialized with Capital Awareness & Retaliation mechanics.", "log-dodge");
 }
 
 function recalcCentroid(nationId) {
@@ -751,57 +752,125 @@ function paintMap() {
   });
 }
 
-function checkCapitalDangerAndDodge(nationId) {
-  const nation = nations[nationId];
-  if (!nation || nation.cells.length === 0 || nation.isEliminated || nation.isMergedSub) return;
+// CAPITAL PROXIMITY 1-5PX SCAN & DECISION LOGIC:
+// - If enemy gets 1-5px from capital:
+// - If the target state is focused on eliminating something else and is small/medium: it FAILS to notice and gets eliminated!
+// - If the target state is big (30+ cells): it NOTICES even when attacking, relocates capital, and counter-attacks!
+function checkCapitalProximityThreats(activeIds) {
+  activeIds.forEach(targetId => {
+    const victim = nations[targetId];
+    if (!victim || victim.isEliminated || victim.cells.length === 0) return;
 
-  const capCol = Math.floor(nation.capital.x / CELL_W);
-  const capRow = Math.floor(nation.capital.y / CELL_H);
+    const capCol = victim.capital.col;
+    const capRow = victim.capital.row;
+    const isIslandSector = capRow >= 25;
 
-  let directlyThreatenedBy = null;
-  const dirs = [[0,1], [0,-1], [1,0], [-1,0]];
+    let closestEnemy = null;
+    let shortestDist = 999;
 
-  for (let [dc, dr] of dirs) {
-    const nc = capCol + dc;
-    const nr = capRow + dr;
-    if (nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS) {
-      const neighborOwner = grid[nr][nc];
-      if (neighborOwner && neighborOwner !== nationId && !nations[neighborOwner].isEliminated) {
-        directlyThreatenedBy = neighborOwner;
-        break;
+    // Scan 1 to 5 cells in all directions from the capital
+    for (let dr = -5; dr <= 5; dr++) {
+      for (let dc = -5; dc <= 5; dc++) {
+        const nr = capRow + dr;
+        const nc = capCol + dc;
+        if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
+          const owner = grid[nr][nc];
+          if (owner && owner !== targetId && !victim.allies.includes(owner) && !nations[owner].isEliminated) {
+            // Islands cannot decapitate mainland capitals unless they have a mainland cell
+            if (!isIslandSector && nr >= 25 && !nations[owner].cells.some(c => c.row < 25)) {
+              continue;
+            }
+            const dist = Math.max(Math.abs(dr), Math.abs(dc));
+            if (dist < shortestDist) {
+              shortestDist = dist;
+              closestEnemy = owner;
+            }
+          }
+        }
       }
     }
+
+    // Capital has an enemy within 1-5 cells!
+    if (closestEnemy && shortestDist <= 5) {
+      const invader = nations[closestEnemy];
+      const isBigState = victim.cells.length >= 28;
+      const isDistracted = (victim.targetFocus !== null);
+
+      // CASE 1: Distracted small/medium state fails to notice in time -> Instant Decapitation!
+      if (!isBigState && isDistracted) {
+        addLog(`🎯 SNEAK DECAPITATION (${shortestDist}px): ${invader.name} reached ${victim.name}'s capital while it was distracted eliminating ${nations[victim.targetFocus]?.name || 'rebels'}! ${victim.name} is ELIMINATED!`, "log-decap");
+        executeCapitalAnnexation(targetId, closestEnemy);
+        return;
+      }
+
+      // CASE 2: Big empire notices even while distracted, moves capital and counter-attacks
+      if (isBigState) {
+        // Find safe inland cells
+        const inlandCells = victim.cells.filter(c => {
+          return Math.abs(c.col - capCol) > 2 || Math.abs(c.row - capRow) > 2;
+        });
+
+        if (inlandCells.length > 0) {
+          const newCell = inlandCells[Math.floor(inlandCells.length / 2)];
+          victim.capital.x = (newCell.col * CELL_W) + (CELL_W / 2);
+          victim.capital.y = (newCell.row * CELL_H) + (CELL_H / 2);
+          victim.capital.col = newCell.col;
+          victim.capital.row = newCell.row;
+
+          const capEl = document.getElementById("cap-" + targetId);
+          if (capEl) {
+            capEl.classList.add("dodging");
+            setTimeout(() => capEl.classList.remove("dodging"), 400);
+          }
+
+          addLog(`🚨 AWARENESS: ${victim.name} (Large Empire) noticed ${invader.name} sneaking within ${shortestDist}px of its capital! Capital evacuated!`, "log-dodge");
+
+          // Retaliation counter-invasion
+          retaliateAgainstSneakInvader(victim, invader);
+        } else {
+          // No inland cells left for even a big state -> falls!
+          executeCapitalAnnexation(targetId, closestEnemy);
+        }
+        return;
+      }
+
+      // CASE 3: Small state NOT currently distracted has a normal 60% chance to evacuate, otherwise falls!
+      if (Math.random() < 0.60 && victim.cells.length > 3) {
+        const safeCell = victim.cells[Math.floor(victim.cells.length / 2)];
+        victim.capital.x = (safeCell.col * CELL_W) + (CELL_W / 2);
+        victim.capital.y = (safeCell.row * CELL_H) + (CELL_H / 2);
+        victim.capital.col = safeCell.col;
+        victim.capital.row = safeCell.row;
+        addLog(`⚠️ ALERT: ${victim.name} quickly relocated capital away from approaching ${invader.name} troops!`, "log-dodge");
+      } else {
+        addLog(`💥 CAPITAL OVERRUN (${shortestDist}px): ${invader.name} breached ${victim.name}'s capital before it could react! ${victim.name} is ELIMINATED!`, "log-decap");
+        executeCapitalAnnexation(targetId, closestEnemy);
+      }
+    }
+  });
+}
+
+function retaliateAgainstSneakInvader(defender, attacker) {
+  if (attacker.cells.length === 0 || defender.coins < 20) return;
+
+  const counterCount = Math.min(attacker.cells.length, Math.floor(Math.random() * 4) + 3);
+  for (let i = 0; i < counterCount; i++) {
+    if (attacker.cells.length === 0) break;
+    const c = attacker.cells.pop();
+    grid[c.row][c.col] = defender.id;
+    defender.cells.push(c);
   }
 
-  if (directlyThreatenedBy) {
-    const safeCells = nation.cells.filter(cell => {
-      return dirs.every(([dc, dr]) => {
-        const nc = cell.col + dc;
-        const nr = cell.row + dr;
-        if (nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS) {
-          const o = grid[nr][nc];
-          return o === nationId || o === null;
-        }
-        return true;
-      });
-    });
+  const defCost = (counterCount * 18) + 20;
+  defender.coins = Math.max(0, defender.coins - defCost);
+  recalcCentroid(defender.id);
+  recalcCentroid(attacker.id);
 
-    if (safeCells.length > 0) {
-      const targetCell = safeCells[0];
-      nation.capital.x = (targetCell.col * CELL_W) + (CELL_W / 2);
-      nation.capital.y = (targetCell.row * CELL_H) + (CELL_H / 2);
-      nation.capital.col = targetCell.col;
-      nation.capital.row = targetCell.row;
+  addLog(`⚔️ RETALIATION: ${defender.name} turned its armies around and annexed ${counterCount}px from reckless ${attacker.name}!`, "log-war");
 
-      const capEl = document.getElementById("cap-" + nationId);
-      if (capEl) {
-        capEl.classList.add("dodging");
-        setTimeout(() => capEl.classList.remove("dodging"), 400);
-      }
-      addLog(`🚨 ${nation.name} capital evacuated deeper inland!`, "log-dodge");
-    } else {
-      executeCapitalAnnexation(nationId, directlyThreatenedBy);
-    }
+  if (attacker.cells.length === 0) {
+    attacker.isEliminated = true;
+    addLog(`💀 ${attacker.name} was wiped out after failing their capital raid against ${defender.name}!`, "log-war");
   }
 }
 
@@ -811,6 +880,7 @@ function executeCapitalAnnexation(victimId, conquerorId) {
   if (!victim || victim.isEliminated) return;
 
   victim.isEliminated = true;
+  victim.targetFocus = null;
 
   const capEl = document.getElementById("cap-" + victimId);
   const lblEl = document.getElementById("lbl-" + victimId);
@@ -822,8 +892,7 @@ function executeCapitalAnnexation(victimId, conquerorId) {
     if (rect) rect.setAttribute("fill", "#ffffff");
   });
 
-  addLog(`💥 CAPITAL OVERRUN: ${conqueror.name} seized ${victim.name}'s capital! ${victim.name} is ELIMINATED!`, "log-war");
-  showToast(`${victim.name} fell to ${conqueror.name}!`);
+  showToast(`${victim.name} capital conquered by ${conqueror.name}!`);
 
   setTimeout(() => {
     distributeEliminatedTerritory(victimId, conquerorId);
@@ -913,128 +982,6 @@ function handleBankruptcies(activeIds) {
   });
 }
 
-// 1-5 PIXEL PROXIMITY AUTO-INVASION ENGINE
-// If any tiny piece of a state is within 1-5 cells (Chebyshev distance) of any other state,
-// an automatic border clash is triggered regardless of target size.
-// Powerful targets calculate defense and can fight back or counter-invade!
-function processProximityInvasions(activeIds) {
-  if (activeIds.length <= 1) return;
-
-  const scannedPairs = new Set();
-  const candidates = [];
-
-  // Randomly sample up to 4 potential proximity clashes each turn
-  for (let i = 0; i < 4; i++) {
-    const attId = activeIds[Math.floor(Math.random() * activeIds.length)];
-    const attacker = nations[attId];
-    if (!attacker || attacker.coins <= 0 || attacker.cells.length === 0) continue;
-
-    // Pick a random piece of territory
-    const cell = attacker.cells[Math.floor(Math.random() * attacker.cells.length)];
-
-    // Scan 1-5 cell radius for any other state
-    let foundTarget = null;
-    let targetCell = null;
-    let shortestDist = 999;
-
-    for (let dr = -5; dr <= 5; dr++) {
-      for (let dc = -5; dc <= 5; dc++) {
-        const nr = cell.row + dr;
-        const nc = cell.col + dc;
-        if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
-          const otherOwner = grid[nr][nc];
-          if (otherOwner && otherOwner !== attId && !attacker.allies.includes(otherOwner) && !nations[otherOwner].isEliminated) {
-            const dist = Math.max(Math.abs(dr), Math.abs(dc));
-            if (dist < shortestDist) {
-              shortestDist = dist;
-              foundTarget = otherOwner;
-              targetCell = { col: nc, row: nr };
-            }
-          }
-        }
-      }
-    }
-
-    if (foundTarget && !scannedPairs.has(`${attId}-${foundTarget}`)) {
-      scannedPairs.add(`${attId}-${foundTarget}`);
-      candidates.push({ attacker: attacker, defender: nations[foundTarget], targetCell: targetCell, dist: shortestDist });
-    }
-  }
-
-  candidates.forEach(clash => {
-    resolveProximityBattle(clash.attacker, clash.defender, clash.targetCell, clash.dist);
-  });
-}
-
-function resolveProximityBattle(attacker, defender, targetCell, dist) {
-  if (attacker.cells.length === 0 || defender.cells.length === 0 || attacker.coins <= 0) return;
-
-  // Power calculation: size, treasury budget, and tactical roll
-  const attackerBudget = Math.min(attacker.coins, 300);
-  const defenderBudget = Math.min(defender.coins, 300);
-
-  const attackerPower = (attacker.cells.length * 2.2) + (attackerBudget * 0.45) + (Math.random() * 40);
-  const defenderPower = (defender.cells.length * 2.2) + (defenderBudget * 0.45) + (Math.random() * 40);
-
-  // Attacker succeeds in opportunistic raid
-  if (attackerPower >= defenderPower * 0.78) {
-    const seizedCount = Math.min(defender.cells.length, Math.floor(Math.random() * 4) + 2);
-
-    for (let i = 0; i < seizedCount; i++) {
-      if (defender.cells.length === 0) break;
-      const c = defender.cells.pop();
-      grid[c.row][c.col] = attacker.id;
-      attacker.cells.push(c);
-    }
-
-    const warCost = (seizedCount * 18) + 20;
-    attacker.coins = Math.max(0, attacker.coins - warCost);
-    defender.coins = Math.max(0, defender.coins - Math.floor(seizedCount * 6));
-
-    recalcCentroid(attacker.id);
-    recalcCentroid(defender.id);
-
-    addLog(`⚡ CLOSE PROXIMITY RAID (${dist}px): ${attacker.name} attacked ${defender.name} and grabbed ${seizedCount}px!`, "log-skirmish");
-
-    if (defender.cells.length === 0) {
-      defender.isEliminated = true;
-      addLog(`💀 ${defender.name} was wiped out during border skirmishes with ${attacker.name}!`, "log-war");
-    } else {
-      checkCapitalDangerAndDodge(defender.id);
-    }
-  } 
-  // TARGET HAS POWER AND FIGHTS BACK (COUNTER-INVASION!)
-  else if (defenderPower > attackerPower * 1.25 && defender.coins > 20) {
-    const counterSeize = Math.min(attacker.cells.length, Math.floor(Math.random() * 3) + 2);
-
-    for (let i = 0; i < counterSeize; i++) {
-      if (attacker.cells.length === 0) break;
-      const c = attacker.cells.pop();
-      grid[c.row][c.col] = defender.id;
-      defender.cells.push(c);
-    }
-
-    const defCost = (counterSeize * 15) + 15;
-    defender.coins = Math.max(0, defender.coins - defCost);
-    attacker.coins = Math.max(0, attacker.coins - 40);
-
-    recalcCentroid(attacker.id);
-    recalcCentroid(defender.id);
-
-    addLog(`🛡️ COUNTER-STRIKE: ${defender.name} repulsed ${attacker.name}'s raid and seized ${counterSeize}px in retaliation!`, "log-war");
-
-    if (attacker.cells.length === 0) {
-      attacker.isEliminated = true;
-      addLog(`💀 ${attacker.name} failed their reckless raid and was destroyed by ${defender.name}!`, "log-war");
-    } else {
-      checkCapitalDangerAndDodge(attacker.id);
-    }
-  } else {
-    attacker.coins = Math.max(0, attacker.coins - 35);
-    addLog(`⚠️ BORDER SKIRMISH: ${attacker.name} pushed into ${defender.name} (${dist}px away) but was held at bay!`, "log-dodge");
-  }
-}
-
 function stepTurn() {
   year++;
   document.getElementById("year-count").textContent = year;
@@ -1046,8 +993,6 @@ function stepTurn() {
     const baseIncome = Math.floor(nation.cells.length * 1.7) + 6;
     const militaryUpkeep = Math.floor(nation.cells.length * 1.5);
     nation.coins = Math.max(0, nation.coins + baseIncome - militaryUpkeep);
-
-    checkCapitalDangerAndDodge(id);
   });
 
   let activeIds = Object.keys(nations).filter(id => nations[id].cells.length > 0 && !nations[id].isMergedSub && !nations[id].isEliminated);
@@ -1059,10 +1004,10 @@ function stepTurn() {
 
   handleBankruptcies(activeIds);
 
-  // Automatic Proximity Invasions (1-5px triggers)
-  processProximityInvasions(activeIds);
+  // Capital Proximity Decapitation & Awareness Checks
+  checkCapitalProximityThreats(activeIds);
 
-  const actionsThisTurn = Math.min(activeIds.length, Math.floor(Math.random() * 3) + 3);
+  const actionsThisTurn = Math.min(activeIds.length, Math.floor(Math.random() * 3) + 2);
 
   for (let a = 0; a < actionsThisTurn; a++) {
     activeIds = Object.keys(nations).filter(id => nations[id].cells.length > 0 && !nations[id].isMergedSub && !nations[id].isEliminated);
@@ -1116,6 +1061,9 @@ function attemptMilitaryPush(actor, activeIds) {
 
   if (!defender || defender.isEliminated || defenderId === actor.id) return;
 
+  // Set target focus (distraction mechanic)
+  actor.targetFocus = defenderId;
+
   if (actor.allies.includes(defenderId)) {
     if (Math.random() < 0.6) return;
     actor.allies = actor.allies.filter(a => a !== defenderId);
@@ -1130,7 +1078,7 @@ function attemptMilitaryPush(actor, activeIds) {
   const defenderPower = (defender.cells.length * 2.5) + (defenderBudget * 0.4) + (Math.random() * 35);
 
   if (attackerPower >= defenderPower * 0.82) {
-    const campaignSize = Math.floor(Math.random() * 7) + 6;
+    const campaignSize = Math.floor(Math.random() * 6) + 5;
     const conquered = Math.min(defender.cells.length, campaignSize);
 
     for (let i = 0; i < conquered; i++) {
@@ -1149,15 +1097,15 @@ function attemptMilitaryPush(actor, activeIds) {
 
     if (defender.cells.length === 0) {
       defender.isEliminated = true;
+      actor.targetFocus = null;
       addLog(`💀 ${defender.name} collapsed completely! Annexed by ${actor.name}! (-${militaryExpenditure}g)`, "log-war");
     } else {
       addLog(`⚔️ ${actor.name} annexed ${conquered}px from ${defender.name} for ${militaryExpenditure}g!`, "log-war");
     }
-
-    checkCapitalDangerAndDodge(defenderId);
   } else {
     actor.coins = Math.max(0, actor.coins - 85);
     addLog(`🛡️ ${defender.name} repulsed ${actor.name}'s assault! (-85g)`, "log-dodge");
+    actor.targetFocus = null;
   }
 }
 
