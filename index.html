@@ -336,7 +336,7 @@
 
       <rect width="960" height="600" fill="url(#sea-dots)" />
 
-      <!-- Dock Sectors: Moved to lower dock rows (row 25+) -->
+      <!-- Dock Sectors -->
       <g id="dock-frames">
         <rect x="30" y="500" width="150" height="85" rx="8" class="dock-box" />
         <text x="40" y="515" class="dock-label">Sector Alaska</text>
@@ -390,7 +390,6 @@ const ROWS = 30;
 const CELL_W = 20;
 const CELL_H = 20;
 
-// Authentic Coastline Matrix with accurate Florida Boot & Gulf Arch
 const COASTLINE_MASK = [
   // 0-4 (Northern tier / Canada border)
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -415,14 +414,14 @@ const COASTLINE_MASK = [
   [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
-  // 19-24 (Texas Boot & FULL THICK FLORIDA PENINSULA SWEEP)
+  // 19-24 (Texas Boot & Thick Florida Sweep)
   [0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
-  // 25-29 (Offshore Dock Row: AK 1-8, HI 10-17, FL Keys 33-34, PR 39-46)
+  // 25-29 (Offshore Dock Row)
   [0,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,0],
   [0,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,1,1,1,1,1,1,1,0],
   [0,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,1,1,1,1,1,1,1,0],
@@ -438,7 +437,6 @@ const VIBRANT_COLORS = [
 ];
 
 const STATE_DEFS = {
-  // Pacific
   WA: { name: "Washington", seed: [5, 3] },
   OR: { name: "Oregon", seed: [5, 6] },
   CA: { name: "California", seed: [4, 12] },
@@ -450,8 +448,6 @@ const STATE_DEFS = {
   WY: { name: "Wyoming", seed: [13, 8] },
   CO: { name: "Colorado", seed: [14, 11] },
   NM: { name: "New Mexico", seed: [12, 16] },
-
-  // Midwest / Plains
   ND: { name: "North Dakota", seed: [18, 3] },
   SD: { name: "South Dakota", seed: [18, 6] },
   NE: { name: "Nebraska", seed: [18, 9] },
@@ -463,8 +459,6 @@ const STATE_DEFS = {
   MO: { name: "Missouri", seed: [22, 12] },
   AR: { name: "Arkansas", seed: [22, 16] },
   LA: { name: "Louisiana", seed: [22, 20] },
-
-  // Central / Lakes
   WI: { name: "Wisconsin", seed: [25, 6] },
   IL: { name: "Illinois", seed: [25, 10] },
   MI: { name: "Michigan", seed: [28, 6] },
@@ -473,11 +467,9 @@ const STATE_DEFS = {
   KY: { name: "Kentucky", seed: [28, 13] },
   TN: { name: "Tennessee", seed: [28, 15] },
   MS: { name: "Mississippi", seed: [25, 18] },
-  AL: { name: "Alabama", seed: [27, 18] },
-
-  // Southeast & East (Florida seed moved deep into heart of peninsula)
-  FL: { name: "Florida", seed: [33, 23] },
-  GA: { name: "Georgia", seed: [29, 18] },
+  AL: { name: "Alabama", seed: [26, 17] },
+  FL: { name: "Florida", seed: [31, 22] },
+  GA: { name: "Georgia", seed: [30, 17] },
   SC: { name: "South Carolina", seed: [32, 16] },
   NC: { name: "North Carolina", seed: [33, 14] },
   VA: { name: "Virginia", seed: [33, 12] },
@@ -486,8 +478,6 @@ const STATE_DEFS = {
   DE: { name: "Delaware", seed: [37, 10] },
   PA: { name: "Pennsylvania", seed: [34, 8] },
   NJ: { name: "New Jersey", seed: [37, 9] },
-
-  // Northeast
   NY: { name: "New York", seed: [34, 6] },
   CT: { name: "Connecticut", seed: [38, 7] },
   RI: { name: "Rhode Island", seed: [39, 7] },
@@ -495,8 +485,6 @@ const STATE_DEFS = {
   VT: { name: "Vermont", seed: [36, 4] },
   NH: { name: "New Hampshire", seed: [38, 4] },
   ME: { name: "Maine", seed: [40, 3] },
-
-  // Relocated Docks
   AK: { name: "Alaska", seed: [4, 27] },
   HI: { name: "Hawaii", seed: [13, 27] },
   PR: { name: "Puerto Rico", seed: [42, 27] }
@@ -540,25 +528,29 @@ function initSimulation() {
       let bestId = null;
       let minDist = 999999;
 
-      // Bottom Row Dock & Peninsula boundaries
       if (r >= 25) {
         if (c >= 1 && c <= 8) bestId = "AK";
         else if (c >= 10 && c <= 17) bestId = "HI";
         else if (c >= 39 && c <= 46) bestId = "PR";
-        else if (c >= 31 && c <= 35) bestId = "FL"; // Florida Keys / South Tip
+        else if (c >= 31 && c <= 35) bestId = "FL";
       } else {
-        Object.keys(STATE_DEFS).forEach(id => {
-          if (["AK", "HI", "PR"].includes(id)) return;
-          const def = STATE_DEFS[id];
-          const dx = c - def.seed[0];
-          const dy = r - def.seed[1];
-          const dist = (dx * dx) + (dy * dy);
+        // Enforce the panhandle strip along the Gulf under Alabama
+        if ((r === 21 || r === 22) && (c >= 27 && c <= 31)) {
+          bestId = "FL";
+        } else {
+          Object.keys(STATE_DEFS).forEach(id => {
+            if (["AK", "HI", "PR"].includes(id)) return;
+            const def = STATE_DEFS[id];
+            const dx = c - def.seed[0];
+            const dy = r - def.seed[1];
+            const dist = (dx * dx) + (dy * dy);
 
-          if (dist < minDist) {
-            minDist = dist;
-            bestId = id;
-          }
-        });
+            if (dist < minDist) {
+              minDist = dist;
+              bestId = id;
+            }
+          });
+        }
       }
 
       if (bestId && nations[bestId]) {
@@ -575,7 +567,7 @@ function initSimulation() {
   renderMap();
   populateDropdown();
   updateUI();
-  addLog("Simulation initialized with authentic Florida peninsula.", "log-dodge");
+  addLog("Simulation initialized with Florida-Alabama panhandle border.", "log-dodge");
 }
 
 function recalcCentroid(nationId) {
