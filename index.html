@@ -390,15 +390,14 @@ const ROWS = 30;
 const CELL_W = 20;
 const CELL_H = 20;
 
-// Corrected Coastline Mask with Great Lakes water separation and accurate coastlines
 const COASTLINE_MASK = [
-  // 0-4 (Northern Tier / Canada)
+  // 0-4 (Northern tier / Canada border)
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0],
   [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0],
   [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0],
   [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0],
-  // 5-9 (Upper Midwest, Lake Michigan separation, New England)
+  // 5-9 (Upper Midwest, Lakes, New England)
   [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0],
   [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0],
   [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0],
@@ -437,7 +436,6 @@ const VIBRANT_COLORS = [
   "#6366f1", "#84cc16", "#eab308", "#06b6d4", "#f97316"
 ];
 
-// Calibrated geography seeds: horizontal KY/TN, proper IL/MO alignment, mitten MI, OK panhandle
 const STATE_DEFS = {
   WA: { name: "Washington", seed: [5, 3] },
   OR: { name: "Oregon", seed: [5, 6] },
@@ -514,6 +512,7 @@ function initSimulation() {
       allies: [],
       mergedWith: null,
       isMergedSub: false,
+      isEliminated: false,
       capital: { x: 0, y: 0, col: def.seed[0], row: def.seed[1] }
     };
     colorIdx++;
@@ -536,32 +535,19 @@ function initSimulation() {
         else if (c >= 39 && c <= 46) bestId = "PR";
         else if (c >= 31 && c <= 35) bestId = "FL";
       } else {
-        // 1. Oklahoma Panhandle (strip between KS and TX)
         if (r === 14 && c >= 14 && c <= 17) {
           bestId = "OK";
-        }
-        // 2. Horizontal Kentucky band
-        else if (r === 13 && c >= 25 && c <= 31) {
+        } else if (r === 13 && c >= 25 && c <= 31) {
           bestId = "KY";
-        }
-        // 3. Horizontal Tennessee band
-        else if (r === 15 && c >= 24 && c <= 31) {
+        } else if (r === 15 && c >= 24 && c <= 31) {
           bestId = "TN";
-        }
-        // 4. Mississippi Gulf Coast access (Biloxi)
-        else if ((r === 21 || r === 22) && (c >= 23 && c <= 25)) {
+        } else if ((r === 21 || r === 22) && (c >= 23 && c <= 25)) {
           bestId = "MS";
-        }
-        // 5. Alabama Gulf Coast access (Mobile Bay)
-        else if ((r === 21 || r === 22) && (c >= 26 && c <= 27)) {
+        } else if ((r === 21 || r === 22) && (c >= 26 && c <= 27)) {
           bestId = "AL";
-        }
-        // 6. Florida Panhandle (starts precisely at Pensacola border c=28, under AL and GA)
-        else if ((r === 21 || r === 22) && (c >= 28 && c <= 32)) {
+        } else if ((r === 21 || r === 22) && (c >= 28 && c <= 32)) {
           bestId = "FL";
-        }
-        // Standard distance calculation for all other states
-        else {
+        } else {
           let minDist = 999999;
           Object.keys(STATE_DEFS).forEach(id => {
             if (["AK", "HI", "PR"].includes(id)) return;
@@ -592,7 +578,7 @@ function initSimulation() {
   renderMap();
   populateDropdown();
   updateUI();
-  addLog("Simulation initialized with accurate regional geography.", "log-dodge");
+  addLog("Simulation initialized with proximity elimination mechanics.", "log-dodge");
 }
 
 function recalcCentroid(nationId) {
@@ -689,7 +675,7 @@ function paintMap() {
 
     if (!cap || !lbl) return;
 
-    if (nation.cells.length === 0 || nation.isMergedSub) {
+    if (nation.cells.length === 0 || nation.isMergedSub || nation.isEliminated) {
       cap.style.display = "none";
       lbl.style.display = "none";
     } else {
@@ -703,12 +689,34 @@ function paintMap() {
   });
 }
 
+// Check proximity to hostile borders; annex if distance <= 5 cells, flash white & distribute pixels
 function checkCapitalDangerAndDodge(nationId) {
   const nation = nations[nationId];
-  if (!nation || nation.cells.length <= 3) return;
+  if (!nation || nation.cells.length === 0 || nation.isEliminated || nation.isMergedSub) return;
 
   const capCol = Math.floor(nation.capital.x / CELL_W);
   const capRow = Math.floor(nation.capital.y / CELL_H);
+
+  let nearestDist = 999;
+  let invadingId = null;
+
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const cellOwner = grid[r][c];
+      if (cellOwner && cellOwner !== nationId && !nations[cellOwner].isEliminated) {
+        const d = Math.max(Math.abs(c - capCol), Math.abs(r - capRow));
+        if (d < nearestDist) {
+          nearestDist = d;
+          invadingId = cellOwner;
+        }
+      }
+    }
+  }
+
+  if (nearestDist <= 5 && invadingId) {
+    executeCapitalAnnexation(nationId, invadingId);
+    return;
+  }
 
   let nearHostile = false;
   const dirs = [[0,1], [0,-1], [1,0], [-1,0]];
@@ -716,7 +724,7 @@ function checkCapitalDangerAndDodge(nationId) {
     const nc = capCol + dc;
     const nr = capRow + dr;
     if (nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS) {
-      if (grid[nr][nc] && grid[nr][nc] !== nationId) {
+      if (grid[nr][nc] && grid[nr][nc] !== nationId && !nations[grid[nr][nc]].isEliminated) {
         nearHostile = true;
         break;
       }
@@ -737,9 +745,75 @@ function checkCapitalDangerAndDodge(nationId) {
   }
 }
 
+function executeCapitalAnnexation(victimId, conquerorId) {
+  const victim = nations[victimId];
+  const conqueror = nations[conquerorId];
+  if (!victim || victim.isEliminated) return;
+
+  victim.isEliminated = true;
+
+  const capEl = document.getElementById("cap-" + victimId);
+  const lblEl = document.getElementById("lbl-" + victimId);
+  if (capEl) capEl.style.display = "none";
+  if (lblEl) lblEl.style.display = "none";
+
+  victim.cells.forEach(cell => {
+    const rect = document.getElementById(`cell-${cell.col}-${cell.row}`);
+    if (rect) rect.setAttribute("fill", "#ffffff");
+  });
+
+  addLog(`💥 CAPITAL OVERRUN: ${conqueror.name} reached within 5px of ${victim.name}'s capital! ${victim.name} is ELIMINATED!`, "log-war");
+  showToast(`${victim.name} fell to ${conqueror.name}!`);
+
+  setTimeout(() => {
+    distributeEliminatedTerritory(victimId, conquerorId);
+    paintMap();
+    updateUI();
+  }, 350);
+}
+
+function distributeEliminatedTerritory(victimId, primaryConquerorId) {
+  const victim = nations[victimId];
+  const oldCells = [...victim.cells];
+  victim.cells = [];
+  victim.coins = 0;
+
+  const dirs = [[0,1], [0,-1], [1,0], [-1,0], [1,1], [1,-1], [-1,1], [-1,-1]];
+
+  oldCells.forEach(cell => {
+    let chosenNeighbor = null;
+
+    for (let [dc, dr] of dirs) {
+      const nc = cell.col + dc;
+      const nr = cell.row + dr;
+      if (nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS) {
+        const owner = grid[nr][nc];
+        if (owner && owner !== victimId && nations[owner] && !nations[owner].isEliminated && !nations[owner].isMergedSub) {
+          chosenNeighbor = owner;
+          break;
+        }
+      }
+    }
+
+    const winnerId = chosenNeighbor || primaryConquerorId;
+    grid[cell.row][cell.col] = winnerId;
+    if (nations[winnerId]) {
+      nations[winnerId].cells.push(cell);
+    }
+  });
+
+  Object.keys(nations).forEach(id => {
+    if (!nations[id].isEliminated && nations[id].cells.length > 0) {
+      recalcCentroid(id);
+    }
+  });
+
+  addLog(`🗺️ SURROUNDING STATES CARVED UP ${victim.name}'s remaining lands!`, "log-buy");
+}
+
 function manualMoveCapital(nationId) {
   const nation = nations[nationId];
-  if (!nation || nation.cells.length === 0) return;
+  if (!nation || nation.cells.length === 0 || nation.isEliminated) return;
   const randomCell = nation.cells[Math.floor(Math.random() * nation.cells.length)];
   nation.capital.x = (randomCell.col * CELL_W) + (CELL_W / 2);
   nation.capital.y = (randomCell.row * CELL_H) + (CELL_H / 2);
@@ -753,7 +827,7 @@ function stepTurn() {
 
   Object.keys(nations).forEach(id => {
     const nation = nations[id];
-    if (nation.cells.length === 0 || nation.isMergedSub) return;
+    if (nation.cells.length === 0 || nation.isMergedSub || nation.isEliminated) return;
 
     const income = (nation.cells.length * 6) + Math.floor(Math.random() * 15);
     const upkeep = Math.floor(nation.cells.length * 2);
@@ -762,7 +836,7 @@ function stepTurn() {
     checkCapitalDangerAndDodge(id);
   });
 
-  const activeIds = Object.keys(nations).filter(id => nations[id].cells.length > 0 && !nations[id].isMergedSub);
+  const activeIds = Object.keys(nations).filter(id => nations[id].cells.length > 0 && !nations[id].isMergedSub && !nations[id].isEliminated);
   if (activeIds.length <= 1) {
     pauseSimulation();
     showToast(`Simulation ended! Champion: ${nations[activeIds[0]].name}`);
@@ -797,6 +871,8 @@ function attemptMilitaryPush(actor) {
   const defenderId = grid[target.row][target.col];
   const defender = nations[defenderId];
 
+  if (!defender || defender.isEliminated) return;
+
   if (actor.allies.includes(defenderId)) {
     if (Math.random() < 0.6) return;
     actor.allies = actor.allies.filter(a => a !== defenderId);
@@ -821,6 +897,7 @@ function attemptMilitaryPush(actor) {
     recalcCentroid(defender.id);
 
     if (defender.cells.length === 0) {
+      defender.isEliminated = true;
       addLog(`💀 ${defender.name} was wiped out completely by ${actor.name}!`, "log-war");
     } else {
       addLog(`⚔️ ${actor.name} annexed borderlands from ${defender.name}!`, "log-war");
@@ -838,6 +915,8 @@ function attemptChunkPurchase(actor) {
   const target = frontier[Math.floor(Math.random() * frontier.length)];
   const sellerId = grid[target.row][target.col];
   const seller = nations[sellerId];
+
+  if (!seller || seller.isEliminated) return;
 
   const price = 300 + (seller.cells.length * 10);
   if (actor.coins >= price) {
@@ -869,7 +948,7 @@ function attemptAlliance(actor, activeIds) {
 
 function attemptWartimeMerge(actor, activeIds) {
   const frontier = findFrontierCells(actor);
-  const smallNeighbors = frontier.map(f => grid[f.row][f.col]).filter(id => id && id !== actor.id && nations[id].cells.length <= 12);
+  const smallNeighbors = frontier.map(f => grid[f.row][f.col]).filter(id => id && id !== actor.id && nations[id].cells.length <= 12 && !nations[id].isEliminated);
   if (smallNeighbors.length === 0) return;
 
   const partnerId = smallNeighbors[0];
@@ -894,13 +973,14 @@ function attemptRevolt(activeIds) {
   if (empires.length === 0) return;
 
   const targetEmpire = nations[empires[Math.floor(Math.random() * empires.length)]];
-  const rebelNationIds = Object.keys(nations).filter(id => nations[id].cells.length === 0);
+  const rebelNationIds = Object.keys(nations).filter(id => (nations[id].cells.length === 0 || nations[id].isEliminated));
   if (rebelNationIds.length === 0) return;
 
   const rebelId = rebelNationIds[Math.floor(Math.random() * rebelNationIds.length)];
   const rebel = nations[rebelId];
 
   rebel.isMergedSub = false;
+  rebel.isEliminated = false;
   rebel.mergedWith = null;
   rebel.coins = 350;
 
@@ -925,7 +1005,7 @@ function findFrontierCells(actor) {
       const nc = cell.col + dc;
       const nr = cell.row + dr;
       if (nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS) {
-        if (grid[nr][nc] && grid[nr][nc] !== actor.id) {
+        if (grid[nr][nc] && grid[nr][nc] !== actor.id && !nations[grid[nr][nc]].isEliminated) {
           frontiers.push({ col: nc, row: nr });
         }
       }
@@ -942,7 +1022,7 @@ function handleCellClick(col, row) {
 }
 
 function updateUI() {
-  const activeNations = Object.values(nations).filter(n => n.cells.length > 0 && !n.isMergedSub);
+  const activeNations = Object.values(nations).filter(n => n.cells.length > 0 && !n.isMergedSub && !n.isEliminated);
   document.getElementById("nation-count").textContent = activeNations.length;
 
   const sorted = [...activeNations].sort((a, b) => (b.cells.length * 100 + b.coins) - (a.cells.length * 100 + a.coins));
@@ -1028,7 +1108,7 @@ document.getElementById("btn-toggle").addEventListener("click", toggleSimulation
 document.getElementById("btn-step").addEventListener("click", stepTurn);
 
 document.getElementById("btn-random-rich").addEventListener("click", () => {
-  const activeIds = Object.keys(nations).filter(id => nations[id].cells.length > 0 && !nations[id].isMergedSub);
+  const activeIds = Object.keys(nations).filter(id => nations[id].cells.length > 0 && !nations[id].isMergedSub && !nations[id].isEliminated);
   if (activeIds.length === 0) return;
   const pickedId = activeIds[Math.floor(Math.random() * activeIds.length)];
   nations[pickedId].coins += Math.floor(Math.random() * 6000) + 4000;
