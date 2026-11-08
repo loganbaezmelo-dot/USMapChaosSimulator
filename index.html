@@ -336,16 +336,16 @@
 
       <rect width="960" height="600" fill="url(#sea-dots)" />
 
-      <!-- Dock Sectors (Alaska, Hawaii, Puerto Rico) -->
+      <!-- Dock Sectors: Moved to lower dock rows (row 25+) -->
       <g id="dock-frames">
-        <rect x="40" y="475" width="160" height="105" rx="8" class="dock-box" />
-        <text x="50" y="492" class="dock-label">Sector Alaska</text>
+        <rect x="30" y="500" width="150" height="85" rx="8" class="dock-box" />
+        <text x="40" y="515" class="dock-label">Sector Alaska</text>
 
-        <rect x="220" y="475" width="160" height="105" rx="8" class="dock-box" />
-        <text x="230" y="492" class="dock-label">Sector Hawaii</text>
+        <rect x="200" y="500" width="150" height="85" rx="8" class="dock-box" />
+        <text x="210" y="515" class="dock-label">Sector Hawaii</text>
 
-        <rect x="760" y="475" width="160" height="105" rx="8" class="dock-box" />
-        <text x="770" y="492" class="dock-label">Sector Puerto Rico</text>
+        <rect x="780" y="500" width="150" height="85" rx="8" class="dock-box" />
+        <text x="790" y="515" class="dock-label">Sector Puerto Rico</text>
       </g>
 
       <g id="cell-grid"></g>
@@ -390,8 +390,9 @@ const ROWS = 30;
 const CELL_W = 20;
 const CELL_H = 20;
 
+// Authentic Coastline Matrix with accurate Florida Boot & Gulf Arch
 const COASTLINE_MASK = [
-  // 0-4 (Northern border)
+  // 0-4 (Northern tier / Canada border)
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0],
   [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0],
@@ -414,18 +415,18 @@ const COASTLINE_MASK = [
   [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
-  // 19-23 (Texas Boot, Gulf Coast, & FULL FLORIDA PENINSULA EXTENSION)
+  // 19-24 (Texas Boot & FULL THICK FLORIDA PENINSULA SWEEP)
   [0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
-  // 24-29 (Offshore Dock Row: AK cols 2-9, HI cols 11-18, PR cols 38-45)
-  [0,0,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,1,1,1,1,1,1,1,0,0],
-  [0,0,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,1,1,1,1,1,1,1,0,0],
-  [0,0,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0],
-  [0,0,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0],
-  [0,0,1,1,1,1,1,1,1,1,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
+  // 25-29 (Offshore Dock Row: AK 1-8, HI 10-17, FL Keys 33-34, PR 39-46)
+  [0,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,1,1,1,1,1,1,1,1,0],
+  [0,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,0,0,0,0,1,1,1,1,1,1,1,1,0],
+  [0,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,1,1,1,1,1,1,1,1,0],
+  [0,1,1,1,1,1,1,1,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0],
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0]
 ];
 
@@ -472,9 +473,9 @@ const STATE_DEFS = {
   KY: { name: "Kentucky", seed: [28, 13] },
   TN: { name: "Tennessee", seed: [28, 15] },
   MS: { name: "Mississippi", seed: [25, 18] },
-  AL: { name: "Alabama", seed: [26, 18] },
+  AL: { name: "Alabama", seed: [27, 18] },
 
-  // Southeast & East (Florida positioned properly into peninsula)
+  // Southeast & East (Florida seed moved deep into heart of peninsula)
   FL: { name: "Florida", seed: [33, 23] },
   GA: { name: "Georgia", seed: [29, 18] },
   SC: { name: "South Carolina", seed: [32, 16] },
@@ -496,9 +497,9 @@ const STATE_DEFS = {
   ME: { name: "Maine", seed: [40, 3] },
 
   // Relocated Docks
-  AK: { name: "Alaska", seed: [5, 26] },
-  HI: { name: "Hawaii", seed: [14, 26] },
-  PR: { name: "Puerto Rico", seed: [41, 26] }
+  AK: { name: "Alaska", seed: [4, 27] },
+  HI: { name: "Hawaii", seed: [13, 27] },
+  PR: { name: "Puerto Rico", seed: [42, 27] }
 };
 
 let grid = [];
@@ -539,11 +540,12 @@ function initSimulation() {
       let bestId = null;
       let minDist = 999999;
 
-      if (r >= 24) {
-        if (c >= 2 && c <= 9) bestId = "AK";
-        else if (c >= 11 && c <= 18) bestId = "HI";
-        else if (c >= 38 && c <= 45) bestId = "PR";
-        else if (c >= 30 && c <= 35) bestId = "FL"; // Florida South Tip extension
+      // Bottom Row Dock & Peninsula boundaries
+      if (r >= 25) {
+        if (c >= 1 && c <= 8) bestId = "AK";
+        else if (c >= 10 && c <= 17) bestId = "HI";
+        else if (c >= 39 && c <= 46) bestId = "PR";
+        else if (c >= 31 && c <= 35) bestId = "FL"; // Florida Keys / South Tip
       } else {
         Object.keys(STATE_DEFS).forEach(id => {
           if (["AK", "HI", "PR"].includes(id)) return;
@@ -573,7 +575,7 @@ function initSimulation() {
   renderMap();
   populateDropdown();
   updateUI();
-  addLog("Simulation initialized with full Florida peninsula & docks.", "log-dodge");
+  addLog("Simulation initialized with authentic Florida peninsula.", "log-dodge");
 }
 
 function recalcCentroid(nationId) {
