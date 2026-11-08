@@ -240,7 +240,6 @@
     font-weight: 700;
   }
 
-  /* 4 Tabs Menu */
   .tabs {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -296,6 +295,7 @@
   .log-alliance { border-left-color: var(--accent-green); }
   .log-dodge { border-left-color: #38bdf8; }
   .log-bailout { border-left-color: #eab308; background: #161a22; }
+  .log-skirmish { border-left-color: #ec4899; }
 
   .data-row {
     display: flex;
@@ -414,7 +414,6 @@
       </select>
     </div>
 
-    <!-- 4 Dashboard Menus -->
     <div class="tabs">
       <button class="tab-btn active" id="tab-log">FEED</button>
       <button class="tab-btn" id="tab-lb">RANK</button>
@@ -625,7 +624,7 @@ function initSimulation() {
   renderMap();
   populateDropdown();
   updateUI();
-  addLog("Simulator initialized with bankruptcy & alliance bailout mechanics.", "log-dodge");
+  addLog("Simulator initialized with automatic proximity invasions & retaliation.", "log-dodge");
 }
 
 function recalcCentroid(nationId) {
@@ -823,7 +822,7 @@ function executeCapitalAnnexation(victimId, conquerorId) {
     if (rect) rect.setAttribute("fill", "#ffffff");
   });
 
-  addLog(`💥 CAPITAL OVERRUN: ${conqueror.name} captured ${victim.name}'s capital! ${victim.name} is ELIMINATED!`, "log-war");
+  addLog(`💥 CAPITAL OVERRUN: ${conqueror.name} seized ${victim.name}'s capital! ${victim.name} is ELIMINATED!`, "log-war");
   showToast(`${victim.name} fell to ${conqueror.name}!`);
 
   setTimeout(() => {
@@ -884,19 +883,16 @@ function manualMoveCapital(nationId) {
   showToast(`${nation.name} manually moved capital!`);
 }
 
-// Check Bankruptcy (0 Coins Rule) & Alliance Bailouts / Capital Vulnerability
 function handleBankruptcies(activeIds) {
   activeIds.forEach(id => {
     const nation = nations[id];
     if (nation.coins > 0) return;
 
-    // Nation is at 0 Coins! Check if alliance can bail them out
     const wealthyAllies = nation.allies
       .filter(allyId => nations[allyId] && !nations[allyId].isEliminated && nations[allyId].coins >= 180);
 
     if (wealthyAllies.length > 0) {
       const donor = nations[wealthyAllies[Math.floor(Math.random() * wealthyAllies.length)]];
-      // Randomly choose small or big bailout
       const isBig = Math.random() < 0.35 && donor.coins >= 450;
       const donation = isBig ? Math.floor(Math.random() * 250) + 300 : Math.floor(Math.random() * 100) + 80;
 
@@ -906,7 +902,6 @@ function handleBankruptcies(activeIds) {
       return;
     }
 
-    // No allies to save them! 0 coin nation is defenseless and vulnerable to hostile capital invasion
     const neighbors = findFrontierNeighbors(nation);
     const hostileNeighbors = neighbors.filter(nid => !nation.allies.includes(nid) && nations[nid].coins > 30);
 
@@ -918,11 +913,132 @@ function handleBankruptcies(activeIds) {
   });
 }
 
+// 1-5 PIXEL PROXIMITY AUTO-INVASION ENGINE
+// If any tiny piece of a state is within 1-5 cells (Chebyshev distance) of any other state,
+// an automatic border clash is triggered regardless of target size.
+// Powerful targets calculate defense and can fight back or counter-invade!
+function processProximityInvasions(activeIds) {
+  if (activeIds.length <= 1) return;
+
+  const scannedPairs = new Set();
+  const candidates = [];
+
+  // Randomly sample up to 4 potential proximity clashes each turn
+  for (let i = 0; i < 4; i++) {
+    const attId = activeIds[Math.floor(Math.random() * activeIds.length)];
+    const attacker = nations[attId];
+    if (!attacker || attacker.coins <= 0 || attacker.cells.length === 0) continue;
+
+    // Pick a random piece of territory
+    const cell = attacker.cells[Math.floor(Math.random() * attacker.cells.length)];
+
+    // Scan 1-5 cell radius for any other state
+    let foundTarget = null;
+    let targetCell = null;
+    let shortestDist = 999;
+
+    for (let dr = -5; dr <= 5; dr++) {
+      for (let dc = -5; dc <= 5; dc++) {
+        const nr = cell.row + dr;
+        const nc = cell.col + dc;
+        if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
+          const otherOwner = grid[nr][nc];
+          if (otherOwner && otherOwner !== attId && !attacker.allies.includes(otherOwner) && !nations[otherOwner].isEliminated) {
+            const dist = Math.max(Math.abs(dr), Math.abs(dc));
+            if (dist < shortestDist) {
+              shortestDist = dist;
+              foundTarget = otherOwner;
+              targetCell = { col: nc, row: nr };
+            }
+          }
+        }
+      }
+    }
+
+    if (foundTarget && !scannedPairs.has(`${attId}-${foundTarget}`)) {
+      scannedPairs.add(`${attId}-${foundTarget}`);
+      candidates.push({ attacker: attacker, defender: nations[foundTarget], targetCell: targetCell, dist: shortestDist });
+    }
+  }
+
+  candidates.forEach(clash => {
+    resolveProximityBattle(clash.attacker, clash.defender, clash.targetCell, clash.dist);
+  });
+}
+
+function resolveProximityBattle(attacker, defender, targetCell, dist) {
+  if (attacker.cells.length === 0 || defender.cells.length === 0 || attacker.coins <= 0) return;
+
+  // Power calculation: size, treasury budget, and tactical roll
+  const attackerBudget = Math.min(attacker.coins, 300);
+  const defenderBudget = Math.min(defender.coins, 300);
+
+  const attackerPower = (attacker.cells.length * 2.2) + (attackerBudget * 0.45) + (Math.random() * 40);
+  const defenderPower = (defender.cells.length * 2.2) + (defenderBudget * 0.45) + (Math.random() * 40);
+
+  // Attacker succeeds in opportunistic raid
+  if (attackerPower >= defenderPower * 0.78) {
+    const seizedCount = Math.min(defender.cells.length, Math.floor(Math.random() * 4) + 2);
+
+    for (let i = 0; i < seizedCount; i++) {
+      if (defender.cells.length === 0) break;
+      const c = defender.cells.pop();
+      grid[c.row][c.col] = attacker.id;
+      attacker.cells.push(c);
+    }
+
+    const warCost = (seizedCount * 18) + 20;
+    attacker.coins = Math.max(0, attacker.coins - warCost);
+    defender.coins = Math.max(0, defender.coins - Math.floor(seizedCount * 6));
+
+    recalcCentroid(attacker.id);
+    recalcCentroid(defender.id);
+
+    addLog(`⚡ CLOSE PROXIMITY RAID (${dist}px): ${attacker.name} attacked ${defender.name} and grabbed ${seizedCount}px!`, "log-skirmish");
+
+    if (defender.cells.length === 0) {
+      defender.isEliminated = true;
+      addLog(`💀 ${defender.name} was wiped out during border skirmishes with ${attacker.name}!`, "log-war");
+    } else {
+      checkCapitalDangerAndDodge(defender.id);
+    }
+  } 
+  // TARGET HAS POWER AND FIGHTS BACK (COUNTER-INVASION!)
+  else if (defenderPower > attackerPower * 1.25 && defender.coins > 20) {
+    const counterSeize = Math.min(attacker.cells.length, Math.floor(Math.random() * 3) + 2);
+
+    for (let i = 0; i < counterSeize; i++) {
+      if (attacker.cells.length === 0) break;
+      const c = attacker.cells.pop();
+      grid[c.row][c.col] = defender.id;
+      defender.cells.push(c);
+    }
+
+    const defCost = (counterSeize * 15) + 15;
+    defender.coins = Math.max(0, defender.coins - defCost);
+    attacker.coins = Math.max(0, attacker.coins - 40);
+
+    recalcCentroid(attacker.id);
+    recalcCentroid(defender.id);
+
+    addLog(`🛡️ COUNTER-STRIKE: ${defender.name} repulsed ${attacker.name}'s raid and seized ${counterSeize}px in retaliation!`, "log-war");
+
+    if (attacker.cells.length === 0) {
+      attacker.isEliminated = true;
+      addLog(`💀 ${attacker.name} failed their reckless raid and was destroyed by ${defender.name}!`, "log-war");
+    } else {
+      checkCapitalDangerAndDodge(attacker.id);
+    }
+  } else {
+    attacker.coins = Math.max(0, attacker.coins - 35);
+    addLog(`⚠️ BORDER SKIRMISH: ${attacker.name} pushed into ${defender.name} (${dist}px away) but was held at bay!`, "log-dodge");
+  }
+}
+
 function stepTurn() {
   year++;
   document.getElementById("year-count").textContent = year;
 
-  // Economy upkeep & income
   Object.keys(nations).forEach(id => {
     const nation = nations[id];
     if (nation.cells.length === 0 || nation.isMergedSub || nation.isEliminated) return;
@@ -941,8 +1057,10 @@ function stepTurn() {
     return;
   }
 
-  // Handle 0-Coin Bankruptcy Rules & Alliance Bailouts
   handleBankruptcies(activeIds);
+
+  // Automatic Proximity Invasions (1-5px triggers)
+  processProximityInvasions(activeIds);
 
   const actionsThisTurn = Math.min(activeIds.length, Math.floor(Math.random() * 3) + 3);
 
@@ -953,31 +1071,19 @@ function stepTurn() {
     const actorId = activeIds[Math.floor(Math.random() * activeIds.length)];
     const actor = nations[actorId];
 
-    // RULE: States with 0 coins CANNOT invade anyone!
-    if (actor.coins <= 0) {
-      continue;
-    }
+    if (actor.coins <= 0) continue;
 
     const roll = Math.random();
 
-    // 1. Buyout Frontier Chunks
     if (roll < 0.20 && actor.coins >= 350) {
       attemptChunkPurchase(actor);
-    }
-    // 2. Alliances
-    else if (roll < 0.36) {
+    } else if (roll < 0.36) {
       attemptAlliance(actor, activeIds);
-    }
-    // 3. Mergers
-    else if (roll < 0.50 && actor.cells.length < 18) {
+    } else if (roll < 0.50 && actor.cells.length < 18) {
       attemptWartimeMerge(actor, activeIds);
-    }
-    // 4. Rare Revolts (cooldown throttled)
-    else if (roll < 0.52 && (year - lastRevoltYear >= 6)) {
+    } else if (roll < 0.52 && (year - lastRevoltYear >= 6)) {
       attemptRevolt(activeIds);
-    }
-    // 5. Military Offensive
-    else {
+    } else {
       attemptMilitaryPush(actor, activeIds);
     }
   }
@@ -987,7 +1093,7 @@ function stepTurn() {
 }
 
 function attemptMilitaryPush(actor, activeIds) {
-  if (actor.coins <= 0) return; // Cannot invade with 0 coins!
+  if (actor.coins <= 0) return;
 
   let frontierCells = findFrontierCells(actor);
 
@@ -1190,7 +1296,6 @@ function handleCellClick(col, row) {
   showToast(`${owner.name} (${ownerId}) | Cells: ${owner.cells.length} | Gold: ${owner.coins}g`);
 }
 
-// Procedural Alliance Pacts Builder
 function getFormedAlliances(activeNations) {
   const visited = new Set();
   const pacts = [];
@@ -1202,7 +1307,6 @@ function getFormedAlliances(activeNations) {
     if (visited.has(nation.id)) return;
 
     if (nation.allies.length > 0) {
-      // Find connected alliance graph component
       const allianceMembers = [nation];
       visited.add(nation.id);
 
@@ -1237,7 +1341,6 @@ function updateUI() {
   const activeNations = Object.values(nations).filter(n => n.cells.length > 0 && !n.isMergedSub && !n.isEliminated);
   document.getElementById("nation-count").textContent = activeNations.length;
 
-  // 1. Leaderboard (Rank by overall power)
   const rankSorted = [...activeNations].sort((a, b) => (b.cells.length * 100 + b.coins) - (a.cells.length * 100 + a.coins));
   const lbContainer = document.getElementById("lb-container");
   lbContainer.innerHTML = "";
@@ -1259,7 +1362,6 @@ function updateUI() {
     lbContainer.appendChild(row);
   });
 
-  // 2. Country Sizes Tab (Rank strictly by land area / percentage)
   const sizeSorted = [...activeNations].sort((a, b) => b.cells.length - a.cells.length);
   const sizesContainer = document.getElementById("sizes-container");
   sizesContainer.innerHTML = "";
@@ -1282,7 +1384,6 @@ function updateUI() {
     sizesContainer.appendChild(row);
   });
 
-  // 3. Alliances Tab (Sizes of Alliances & Names)
   const alliancesContainer = document.getElementById("alliances-container");
   alliancesContainer.innerHTML = "";
   const pacts = getFormedAlliances(activeNations);
@@ -1393,7 +1494,6 @@ document.getElementById("btn-drain").addEventListener("click", () => {
   updateUI();
 });
 
-// 4 Tabs Switching
 const tabButtons = [
   { btn: "tab-log", panel: "feed-container" },
   { btn: "tab-lb", panel: "lb-container" },
