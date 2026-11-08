@@ -6,11 +6,11 @@
 <title>US Map Chaos Simulator</title>
 <style>
   :root {
-    --bg-ocean: #0b1322;
-    --panel-bg: rgba(14, 20, 32, 0.96);
-    --border-color: #2a3a54;
+    --bg-ocean: #090e17;
+    --panel-bg: rgba(13, 19, 31, 0.96);
+    --border-color: #26354a;
     --text-main: #f0f4fc;
-    --text-dim: #8fa0be;
+    --text-dim: #8e9fb8;
     --accent-gold: #ffd166;
     --accent-red: #ef476f;
     --accent-green: #06d6a0;
@@ -26,7 +26,7 @@
   }
 
   body {
-    background: #070b12;
+    background: #060a12;
     color: var(--text-main);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     display: flex;
@@ -43,7 +43,7 @@
   #viewport {
     flex: 1;
     position: relative;
-    background: radial-gradient(ellipse at 50% 50%, #16243b 0%, #090e18 100%);
+    background: radial-gradient(ellipse at 50% 50%, #152238 0%, #070c16 100%);
     overflow: hidden;
     display: flex;
     align-items: center;
@@ -56,52 +56,60 @@
     max-height: 98vh;
   }
 
+  /* Territory fill tiles (borderless base) */
   .state-poly {
-    stroke: #121824;
-    stroke-width: 1.4;
-    stroke-linejoin: round;
+    stroke: none;
     cursor: pointer;
-    transition: fill 0.25s cubic-bezier(0.4, 0, 0.2, 1), stroke 0.2s;
+    transition: fill 0.3s ease;
   }
 
   .state-poly:hover {
-    stroke: #ffffff;
-    stroke-width: 2.5;
-    filter: brightness(1.15);
+    filter: brightness(1.2);
+  }
+
+  /* Dynamic border layer lines */
+  .border-internal {
+    stroke: rgba(0, 0, 0, 0.45);
+    stroke-width: 0.8;
+    stroke-dasharray: 2, 2;
+    pointer-events: none;
+  }
+
+  .border-frontier {
+    stroke: #05080f;
+    stroke-width: 2.2;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    pointer-events: none;
   }
 
   .ocean-zone {
-    fill: rgba(22, 38, 64, 0.55);
-    stroke: #2e476d;
+    fill: rgba(20, 34, 56, 0.6);
+    stroke: #2a3f61;
     stroke-width: 1.2;
     stroke-dasharray: 4, 3;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.25s;
   }
 
   .ocean-zone:hover {
-    fill: rgba(36, 62, 102, 0.8);
+    fill: rgba(32, 54, 88, 0.85);
     stroke: var(--accent-gold);
   }
 
   .naval-lane {
-    stroke: rgba(255, 209, 102, 0.4);
+    stroke: rgba(255, 209, 102, 0.35);
     stroke-width: 1.6;
-    stroke-dasharray: 5, 5;
+    stroke-dasharray: 4, 4;
     fill: none;
     pointer-events: none;
-    animation: dashPulse 25s linear infinite;
-  }
-
-  @keyframes dashPulse {
-    to { stroke-dashoffset: -100; }
   }
 
   .dock-box {
-    stroke: #2b3d58;
+    stroke: #25374f;
     stroke-width: 1.5;
     stroke-dasharray: 4, 4;
-    fill: rgba(11, 19, 34, 0.7);
+    fill: rgba(10, 16, 28, 0.7);
   }
 
   .dock-label {
@@ -115,8 +123,8 @@
   .capital-marker {
     fill: #ffffff;
     stroke: #dc2626;
-    stroke-width: 2.2;
-    filter: drop-shadow(0 0 3px rgba(0,0,0,0.8));
+    stroke-width: 2.4;
+    filter: drop-shadow(0 0 4px rgba(0,0,0,0.9));
     cursor: pointer;
     transition: cx 0.4s ease-out, cy 0.4s ease-out;
   }
@@ -133,7 +141,7 @@
     font-weight: 900;
     text-anchor: middle;
     pointer-events: none;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.9), 0 0 4px rgba(0,0,0,0.8);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.95), 0 0 5px rgba(0,0,0,0.85);
   }
 
   /* HUD overlay */
@@ -158,7 +166,7 @@
     top: 14px;
     left: 50%;
     transform: translateX(-50%);
-    background: rgba(14, 20, 32, 0.95);
+    background: rgba(13, 19, 31, 0.95);
     border: 1px solid var(--accent-gold);
     color: #fff;
     padding: 8px 18px;
@@ -203,8 +211,8 @@
   }
 
   .status-badge {
-    background: #1e293b;
-    border: 1px solid #334155;
+    background: #192434;
+    border: 1px solid #2e415b;
     padding: 3px 8px;
     border-radius: 6px;
     font-size: 0.75rem;
@@ -218,7 +226,7 @@
   }
 
   button.btn {
-    background: #1e293b;
+    background: #192434;
     color: #fff;
     border: 1px solid var(--border-color);
     padding: 10px;
@@ -258,7 +266,7 @@
   }
 
   select {
-    background: #111827;
+    background: #0f1624;
     border: 1px solid var(--border-color);
     color: #fff;
     padding: 8px 10px;
@@ -270,7 +278,7 @@
 
   .tabs {
     display: flex;
-    background: #0f172a;
+    background: #0d1421;
     border-radius: 6px;
     padding: 2px;
     border: 1px solid var(--border-color);
@@ -289,13 +297,13 @@
   }
 
   .tab-btn.active {
-    background: #1e293b;
+    background: #1c283c;
     color: #fff;
   }
 
   .scroll-container {
     flex: 1;
-    background: #090e17;
+    background: #080d15;
     border: 1px solid var(--border-color);
     border-radius: 8px;
     overflow-y: auto;
@@ -308,7 +316,7 @@
   .log-entry {
     padding: 5px 7px;
     border-radius: 4px;
-    background: #111827;
+    background: #101724;
     border-left: 3px solid #64748b;
     font-size: 0.76rem;
     line-height: 1.35;
@@ -326,7 +334,7 @@
     justify-content: space-between;
     align-items: center;
     padding: 5px 8px;
-    background: #111827;
+    background: #101724;
     border-radius: 4px;
     font-size: 0.78rem;
   }
@@ -353,9 +361,8 @@
       <div>Active Nations: <span id="nation-count" style="color:var(--accent-green)">51</span></div>
     </div>
 
-    <div id="toast">Florida relocated to Havana!</div>
+    <div id="toast">Florida invaded Havana!</div>
 
-    <!-- Scaled coordinate grid: 960x600 -->
     <svg id="map" viewBox="0 0 960 600">
       <defs>
         <pattern id="ocean-dots" width="16" height="16" patternUnits="userSpaceOnUse">
@@ -363,10 +370,9 @@
         </pattern>
       </defs>
 
-      <!-- Background Grid -->
       <rect width="960" height="600" fill="url(#ocean-dots)" />
 
-      <!-- Alaska, Hawaii & Puerto Rico Dock Frames -->
+      <!-- Dock Sectors -->
       <g id="dock-frames">
         <rect x="40" y="470" width="170" height="110" rx="8" class="dock-box" />
         <text x="50" y="485" class="dock-label">Sector Alaska</text>
@@ -378,16 +384,17 @@
         <text x="750" y="485" class="dock-label">Sector Puerto Rico</text>
       </g>
 
-      <!-- Ocean connection lanes -->
+      <!-- Ocean Trade & Conquest Routes -->
       <g id="naval-lanes"></g>
 
-      <!-- Ocean Hubs / Annexable Sea Tiles -->
+      <!-- Base Fill Polygons -->
       <g id="ocean-tiles"></g>
-
-      <!-- Mainland & Offshore States -->
       <g id="territories"></g>
 
-      <!-- Capital markers (auto-dodge) -->
+      <!-- Dynamic Frontiers / Dissolving Borders -->
+      <g id="dynamic-borders"></g>
+
+      <!-- Capital markers (auto-dodge & moveable) -->
       <g id="capitals"></g>
 
       <!-- Labels -->
@@ -395,7 +402,7 @@
     </svg>
   </div>
 
-  <!-- Sidebar -->
+  <!-- Tablet Control Dashboard -->
   <div id="sidebar">
     <div class="panel-header">
       <div class="panel-title">⚡ STATE SIMULATOR</div>
@@ -427,29 +434,30 @@
 </div>
 
 <script>
-// --- ACCURATE COORDINATE MATRICES ---
+// --- EXACT-SEAM SHARED VERTEX TOPOLOGY ---
+// Shared vertex points guarantee 0 gaps between adjacent polygons
 const NODES = {
   // PACIFIC NORTHWEST & WEST
-  WA: { name: "Washington", path: "M 80,45 L 155,52 L 150,105 L 85,98 Z", cx: 118, cy: 75, adj: ["OR", "ID"], ocean: ["PACIFIC_N"] },
-  OR: { name: "Oregon", path: "M 75,98 L 150,105 L 140,165 L 65,155 Z", cx: 108, cy: 130, adj: ["WA", "ID", "NV", "CA"], ocean: ["PACIFIC_N", "PACIFIC_MID"] },
-  CA: { name: "California", path: "M 65,155 L 140,165 L 122,275 L 105,335 L 65,305 Z", cx: 96, cy: 235, adj: ["OR", "NV", "AZ"], ocean: ["PACIFIC_MID", "PACIFIC_S"] },
-  ID: { name: "Idaho", path: "M 155,52 L 195,58 L 175,170 L 140,165 L 150,105 Z", cx: 165, cy: 110, adj: ["WA", "OR", "NV", "UT", "WY", "MT"], ocean: [] },
-  NV: { name: "Nevada", path: "M 140,165 L 198,175 L 180,270 L 122,275 Z", cx: 160, cy: 220, adj: ["CA", "OR", "ID", "UT", "AZ"], ocean: [] },
-  AZ: { name: "Arizona", path: "M 122,275 L 180,270 L 195,365 L 138,365 L 105,335 Z", cx: 155, cy: 320, adj: ["CA", "NV", "UT", "NM"], ocean: ["PACIFIC_S"] },
+  WA: { name: "Washington", path: "M 80,45 L 155,50 L 150,105 L 75,100 Z", cx: 115, cy: 75, adj: ["OR", "ID"], ocean: ["PACIFIC_N"] },
+  OR: { name: "Oregon", path: "M 75,100 L 150,105 L 140,165 L 65,155 Z", cx: 110, cy: 130, adj: ["WA", "ID", "NV", "CA"], ocean: ["PACIFIC_N", "PACIFIC_MID"] },
+  CA: { name: "California", path: "M 65,155 L 140,165 L 120,275 L 105,335 L 65,305 Z", cx: 95, cy: 235, adj: ["OR", "NV", "AZ"], ocean: ["PACIFIC_MID", "PACIFIC_S"] },
+  ID: { name: "Idaho", path: "M 155,50 L 195,55 L 175,170 L 140,165 L 150,105 Z", cx: 165, cy: 110, adj: ["WA", "OR", "NV", "UT", "WY", "MT"], ocean: [] },
+  NV: { name: "Nevada", path: "M 140,165 L 198,175 L 180,270 L 120,275 Z", cx: 160, cy: 220, adj: ["CA", "OR", "ID", "UT", "AZ"], ocean: [] },
+  AZ: { name: "Arizona", path: "M 120,275 L 180,270 L 195,365 L 138,365 L 105,335 Z", cx: 155, cy: 320, adj: ["CA", "NV", "UT", "NM"], ocean: ["PACIFIC_S"] },
   UT: { name: "Utah", path: "M 198,175 L 255,180 L 245,268 L 180,270 Z", cx: 218, cy: 222, adj: ["NV", "ID", "WY", "CO", "AZ", "NM"], ocean: [] },
-  MT: { name: "Montana", path: "M 195,58 L 330,68 L 320,135 L 175,125 Z", cx: 255, cy: 96, adj: ["ID", "WY", "ND", "SD"], ocean: [] },
+  MT: { name: "Montana", path: "M 195,55 L 330,65 L 320,135 L 175,125 Z", cx: 255, cy: 95, adj: ["ID", "WY", "ND", "SD"], ocean: [] },
   WY: { name: "Wyoming", path: "M 190,130 L 320,135 L 310,200 L 185,195 Z", cx: 250, cy: 165, adj: ["MT", "ID", "UT", "CO", "NE", "SD"], ocean: [] },
   CO: { name: "Colorado", path: "M 255,180 L 365,188 L 355,265 L 245,268 Z", cx: 305, cy: 225, adj: ["WY", "UT", "NM", "OK", "KS", "NE"], ocean: [] },
   NM: { name: "New Mexico", path: "M 195,270 L 295,270 L 285,375 L 195,365 Z", cx: 245, cy: 320, adj: ["AZ", "UT", "CO", "OK", "TX"], ocean: [] },
 
   // GREAT PLAINS & MIDWEST
-  ND: { name: "North Dakota", path: "M 330,68 L 435,74 L 430,130 L 320,126 Z", cx: 375, cy: 98, adj: ["MT", "SD", "MN"], ocean: [] },
+  ND: { name: "North Dakota", path: "M 330,65 L 435,72 L 430,130 L 320,126 Z", cx: 375, cy: 98, adj: ["MT", "SD", "MN"], ocean: [] },
   SD: { name: "South Dakota", path: "M 320,126 L 430,130 L 425,185 L 310,180 Z", cx: 370, cy: 155, adj: ["ND", "MT", "WY", "NE", "IA", "MN"], ocean: [] },
   NE: { name: "Nebraska", path: "M 310,180 L 425,185 L 420,245 L 315,240 Z", cx: 368, cy: 212, adj: ["SD", "WY", "CO", "KS", "MO", "IA"], ocean: [] },
   KS: { name: "Kansas", path: "M 315,240 L 420,245 L 415,305 L 310,300 Z", cx: 365, cy: 272, adj: ["NE", "CO", "OK", "MO"], ocean: [] },
   OK: { name: "Oklahoma", path: "M 300,300 L 415,305 L 410,350 L 290,345 Z", cx: 355, cy: 325, adj: ["KS", "CO", "NM", "TX", "MO", "AR"], ocean: [] },
   TX: { name: "Texas", path: "M 290,345 L 410,350 L 430,425 L 385,465 L 330,460 L 285,375 Z", cx: 350, cy: 405, adj: ["NM", "OK", "AR", "LA"], ocean: ["GULF_W"] },
-  MN: { name: "Minnesota", path: "M 435,74 L 505,78 L 490,165 L 430,158 Z", cx: 465, cy: 118, adj: ["ND", "SD", "IA", "WI"], ocean: [] },
+  MN: { name: "Minnesota", path: "M 435,72 L 505,78 L 490,165 L 430,158 Z", cx: 465, cy: 118, adj: ["ND", "SD", "IA", "WI"], ocean: [] },
   IA: { name: "Iowa", path: "M 425,185 L 490,188 L 485,245 L 420,242 Z", cx: 455, cy: 215, adj: ["MN", "SD", "NE", "MO", "IL", "WI"], ocean: [] },
   MO: { name: "Missouri", path: "M 420,245 L 485,248 L 480,320 L 415,315 Z", cx: 450, cy: 280, adj: ["IA", "NE", "KS", "OK", "AR", "TN", "KY", "IL"], ocean: [] },
   AR: { name: "Arkansas", path: "M 415,315 L 475,320 L 468,382 L 410,378 Z", cx: 442, cy: 350, adj: ["MO", "OK", "TX", "LA", "MS", "TN"], ocean: [] },
@@ -466,7 +474,7 @@ const NODES = {
   MS: { name: "Mississippi", path: "M 468,348 L 508,348 L 500,432 L 460,430 Z", cx: 484, cy: 390, adj: ["TN", "AR", "LA", "AL"], ocean: ["GULF_W"] },
   AL: { name: "Alabama", path: "M 508,348 L 550,348 L 542,435 L 500,432 Z", cx: 525, cy: 390, adj: ["TN", "MS", "GA", "FL"], ocean: ["GULF_E"] },
 
-  // SOUTHEAST & MID-ATLANTIC
+  // SOUTHEAST & EAST
   FL: { name: "Florida", path: "M 542,415 L 620,415 L 635,485 L 610,495 L 555,438 Z", cx: 595, cy: 450, adj: ["AL", "GA"], ocean: ["GULF_E", "ATLANTIC_S", "CARIBBEAN_TILE"] },
   GA: { name: "Georgia", path: "M 550,345 L 612,342 L 605,420 L 542,420 Z", cx: 578, cy: 382, adj: ["FL", "AL", "TN", "NC", "SC"], ocean: ["ATLANTIC_S"] },
   SC: { name: "South Carolina", path: "M 605,335 L 660,335 L 645,385 L 598,382 Z", cx: 628, cy: 360, adj: ["GA", "NC"], ocean: ["ATLANTIC_S"] },
@@ -487,12 +495,12 @@ const NODES = {
   NH: { name: "New Hampshire", path: "M 748,90 L 775,90 L 770,142 L 742,142 Z", cx: 758, cy: 116, adj: ["VT", "ME", "MA"], ocean: ["ATLANTIC_N"] },
   ME: { name: "Maine", path: "M 770,60 L 825,60 L 815,130 L 765,130 Z", cx: 795, cy: 95, adj: ["NH"], ocean: ["ATLANTIC_N"] },
 
-  // OFFSHORE SECTORS (ALASKA, HAWAII, PUERTO RICO)
+  // RELOCATED OFFSHORE DOCKS
   AK: { name: "Alaska", path: "M 55,495 L 180,495 L 165,565 L 70,565 Z", cx: 120, cy: 530, adj: ["HI"], ocean: ["PACIFIC_S"] },
   HI: { name: "Hawaii", path: "M 245,510 L 320,510 L 305,555 L 235,555 Z", cx: 275, cy: 532, adj: ["AK"], ocean: ["PACIFIC_S"] },
   PR: { name: "Puerto Rico", path: "M 765,510 L 880,510 L 865,555 L 755,555 Z", cx: 818, cy: 532, adj: ["CARIBBEAN_TILE"], ocean: ["ATLANTIC_S", "CARIBBEAN_TILE"] },
 
-  // ANNEXABLE OCEAN HUBS / DEEP WATER SECTORS
+  // OCEAN ZONES
   PACIFIC_N: { name: "Pacific NW Deep", path: "M 15,35 L 75,35 L 60,145 L 10,135 Z", cx: 42, cy: 88, adj: ["WA", "OR"], ocean: ["PACIFIC_MID"], isOceanHub: true },
   PACIFIC_MID: { name: "California Current", path: "M 15,155 L 60,155 L 45,285 L 10,270 Z", cx: 35, cy: 215, adj: ["OR", "CA", "PACIFIC_N"], ocean: ["PACIFIC_S"], isOceanHub: true },
   PACIFIC_S: { name: "Pacific Outpost", path: "M 15,295 L 55,310 L 45,430 L 10,410 Z", cx: 32, cy: 365, adj: ["CA", "AZ", "AK", "HI"], ocean: [], isOceanHub: true },
@@ -530,7 +538,7 @@ function initSimulation() {
     nations[id] = {
       id: id,
       name: node.name,
-      color: isOcean ? "#182842" : VIBRANT_COLORS[colorIdx % VIBRANT_COLORS.length],
+      color: isOcean ? "#16253b" : VIBRANT_COLORS[colorIdx % VIBRANT_COLORS.length],
       coins: initialCoins,
       territories: [id],
       allies: [],
@@ -548,7 +556,7 @@ function initSimulation() {
   renderMap();
   populateDropdown();
   updateUI();
-  addLog("Simulation initialized with high-definition boundaries & dock hubs.", "log-dodge");
+  addLog("Dynamic border simulator ready. Shared seams active.", "log-dodge");
 }
 
 function renderMap() {
@@ -564,7 +572,7 @@ function renderMap() {
   lblGroup.innerHTML = "";
   laneGroup.innerHTML = "";
 
-  // Render Naval Connection Lanes
+  // Render Ocean Lines
   Object.keys(NODES).forEach(id => {
     const node = NODES[id];
     node.adj.forEach(targetId => {
@@ -581,7 +589,7 @@ function renderMap() {
     });
   });
 
-  // Render Polygons (Territories vs Ocean Tiles)
+  // Base Polygons
   Object.keys(NODES).forEach((id) => {
     const node = NODES[id];
     const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
@@ -597,7 +605,7 @@ function renderMap() {
       terrGroup.appendChild(path);
     }
 
-    // Text Label
+    // Label
     const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
     txt.setAttribute("x", node.cx);
     txt.setAttribute("y", node.cy + 3);
@@ -607,7 +615,7 @@ function renderMap() {
     lblGroup.appendChild(txt);
   });
 
-  // Render Capital City Dots
+  // Capital Dots
   Object.keys(nations).forEach((id) => {
     const nation = nations[id];
     if (nation.isOceanHub) return;
@@ -628,7 +636,55 @@ function renderMap() {
   paintMap();
 }
 
+// --- DYNAMIC BORDER DISSOLVE ENGINE ---
+// Re-draws dynamic stroke overlays: Internal annexed borders dissolve/fade,
+// while external empire frontiers thicken and redraw cleanly!
+function updateDynamicBorders() {
+  const borderGroup = document.getElementById("dynamic-borders");
+  borderGroup.innerHTML = "";
+
+  Object.keys(NODES).forEach(id => {
+    const ownerId = stateData[id].owner;
+    const node = NODES[id];
+
+    node.adj.forEach(neighborId => {
+      if (id >= neighborId) return; // avoid duplicates
+      const neighborOwnerId = stateData[neighborId].owner;
+      const neighborNode = NODES[neighborId];
+
+      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+      line.setAttribute("x1", node.cx);
+      line.setAttribute("y1", node.cy);
+      line.setAttribute("x2", neighborNode.cx);
+      line.setAttribute("y2", neighborNode.cy);
+
+      // If owners are the same (merged or annexed), border dissolves into faint internal dash
+      if (ownerId === neighborOwnerId) {
+        line.setAttribute("class", "border-internal");
+      } else {
+        // True international hostile border line
+        line.setAttribute("class", "border-frontier");
+      }
+      borderGroup.appendChild(line);
+    });
+
+    // Also update polygon outer stroke to reflect owner's frontier
+    const poly = document.getElementById("poly-" + id);
+    if (poly) {
+      // If surrounded only by same owner, remove harsh outer boundary
+      const isSurrounded = node.adj.every(adjId => stateData[adjId].owner === ownerId);
+      if (isSurrounded) {
+        poly.style.stroke = "none";
+      } else {
+        poly.style.stroke = "#05080f";
+        poly.style.strokeWidth = "1.8px";
+      }
+    }
+  });
+}
+
 function paintMap() {
+  // Update Fills
   Object.keys(NODES).forEach((id) => {
     const ownerId = stateData[id].owner;
     const ownerNation = nations[ownerId];
@@ -638,6 +694,7 @@ function paintMap() {
     }
   });
 
+  // Update Capitals
   Object.keys(nations).forEach((id) => {
     const nation = nations[id];
     const capCircle = document.getElementById("cap-" + id);
@@ -651,9 +708,11 @@ function paintMap() {
       capCircle.setAttribute("cy", nation.capital.y);
     }
   });
+
+  updateDynamicBorders();
 }
 
-// Capital Dodge Function
+// Dynamic Capital Retreat
 function checkCapitalDangerAndDodge(nationId) {
   const nation = nations[nationId];
   if (!nation || nation.territories.length <= 1) return;
@@ -697,12 +756,10 @@ function manualMoveCapital(nationId) {
   showToast(`${nation.name} relocated capital to ${nextRegion}!`);
 }
 
-// Core Engine Step
 function stepTurn() {
   year++;
   document.getElementById("year-count").textContent = year;
 
-  // Economy & Resource Upkeep
   Object.keys(nations).forEach(id => {
     const nation = nations[id];
     if (nation.territories.length === 0 || nation.isMergedSub) return;
@@ -725,24 +782,15 @@ function stepTurn() {
   const actor = nations[actorId];
   const roll = Math.random();
 
-  // 1. Buyout
   if (roll < 0.28 && actor.coins >= 450) {
     attemptTerritoryPurchase(actor);
-  }
-  // 2. Alliance
-  else if (roll < 0.45) {
+  } else if (roll < 0.45) {
     attemptAlliance(actor, activeIds);
-  }
-  // 3. Coalition Merge
-  else if (roll < 0.58 && actor.territories.length < 3) {
+  } else if (roll < 0.58 && actor.territories.length < 3) {
     attemptWartimeMerge(actor, activeIds);
-  }
-  // 4. Revolt
-  else if (roll < 0.72) {
+  } else if (roll < 0.72) {
     attemptRevolt(activeIds);
-  }
-  // 5. War / Annexation
-  else {
+  } else {
     attemptWarConquest(actor);
   }
 
@@ -806,12 +854,12 @@ function attemptWarConquest(actor) {
         defender.capital.currentRegion = fallback;
         defender.capital.x = NODES[fallback].cx;
         defender.capital.y = NODES[fallback].cy;
-        addLog(`⚔️ ${actor.name} took ${defender.name}'s capital! Fled to ${fallback}!`, "log-war");
+        addLog(`⚔️ ${actor.name} seized capital at ${targetTerrId}! ${defender.name} fled to ${fallback}!`, "log-war");
       } else {
         addLog(`💀 ${defender.name} was wiped out by ${actor.name}!`, "log-war");
       }
     } else {
-      addLog(`⚔️ ${actor.name} conquered ${targetTerrId} from ${defender.name}!`, "log-war");
+      addLog(`⚔️ ${actor.name} annexed ${targetTerrId} from ${defender.name}!`, "log-war");
     }
   } else {
     actor.coins = Math.max(0, actor.coins - 100);
@@ -836,7 +884,7 @@ function attemptWartimeMerge(actor, activeIds) {
   actor.coins += partner.coins;
   partner.coins = 0;
 
-  addLog(`🧬 MERGER: ${partner.name} combined with ${actor.name} for protection!`, "log-merge");
+  addLog(`🧬 MERGER: ${partner.name} merged into ${actor.name} for survival!`, "log-merge");
 }
 
 function attemptRevolt(activeIds) {
@@ -969,7 +1017,7 @@ function toggleSimulation() {
     isRunning = true;
     document.getElementById("sim-status").textContent = "RUNNING";
     document.getElementById("sim-status").style.color = "var(--accent-green)";
-    simInterval = setInterval(stepTurn, 600);
+    simInterval = setInterval(stepTurn, 550);
   }
 }
 
