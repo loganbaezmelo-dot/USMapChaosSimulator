@@ -390,16 +390,17 @@ const ROWS = 30;
 const CELL_W = 20;
 const CELL_H = 20;
 
+// Corrected Coastline Mask with Great Lakes water separation and accurate coastlines
 const COASTLINE_MASK = [
-  // 0-4 (Northern tier / Canada border)
+  // 0-4 (Northern Tier / Canada)
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0],
   [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0],
-  [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0],
-  [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0],
-  // 5-9 (Upper Midwest, Lakes, New England)
-  [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0],
-  [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0],
+  [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0],
+  [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0],
+  // 5-9 (Upper Midwest, Lake Michigan separation, New England)
+  [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0],
+  [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0],
   [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0],
   [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0],
   [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0],
@@ -414,7 +415,7 @@ const COASTLINE_MASK = [
   [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
-  // 19-24 (Texas Boot & Thick Florida Sweep)
+  // 19-24 (Texas Boot & Florida Peninsula)
   [0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -436,6 +437,7 @@ const VIBRANT_COLORS = [
   "#6366f1", "#84cc16", "#eab308", "#06b6d4", "#f97316"
 ];
 
+// Calibrated geography seeds: horizontal KY/TN, proper IL/MO alignment, mitten MI, OK panhandle
 const STATE_DEFS = {
   WA: { name: "Washington", seed: [5, 3] },
   OR: { name: "Oregon", seed: [5, 6] },
@@ -456,29 +458,29 @@ const STATE_DEFS = {
   TX: { name: "Texas", seed: [16, 20] },
   MN: { name: "Minnesota", seed: [22, 4] },
   IA: { name: "Iowa", seed: [22, 9] },
-  MO: { name: "Missouri", seed: [22, 12] },
+  MO: { name: "Missouri", seed: [21, 12] },
   AR: { name: "Arkansas", seed: [22, 16] },
-  LA: { name: "Louisiana", seed: [22, 20] },
-  WI: { name: "Wisconsin", seed: [25, 6] },
-  IL: { name: "Illinois", seed: [25, 10] },
-  MI: { name: "Michigan", seed: [28, 6] },
-  IN: { name: "Indiana", seed: [27, 10] },
-  OH: { name: "Ohio", seed: [30, 9] },
+  LA: { name: "Louisiana", seed: [22, 21] },
+  WI: { name: "Wisconsin", seed: [24, 6] },
+  IL: { name: "Illinois", seed: [24, 11] },
+  MI: { name: "Michigan", seed: [29, 6] },
+  IN: { name: "Indiana", seed: [27, 11] },
+  OH: { name: "Ohio", seed: [30, 10] },
   KY: { name: "Kentucky", seed: [28, 13] },
   TN: { name: "Tennessee", seed: [28, 15] },
-  MS: { name: "Mississippi", seed: [25, 18] },
-  AL: { name: "Alabama", seed: [26, 17] },
-  FL: { name: "Florida", seed: [31, 22] },
-  GA: { name: "Georgia", seed: [30, 17] },
-  SC: { name: "South Carolina", seed: [32, 16] },
-  NC: { name: "North Carolina", seed: [33, 14] },
-  VA: { name: "Virginia", seed: [33, 12] },
-  WV: { name: "West Virginia", seed: [31, 11] },
-  MD: { name: "Maryland", seed: [35, 10] },
-  DE: { name: "Delaware", seed: [37, 10] },
+  MS: { name: "Mississippi", seed: [24, 19] },
+  AL: { name: "Alabama", seed: [27, 19] },
+  FL: { name: "Florida", seed: [33, 23] },
+  GA: { name: "Georgia", seed: [31, 18] },
+  SC: { name: "South Carolina", seed: [33, 17] },
+  NC: { name: "North Carolina", seed: [34, 15] },
+  VA: { name: "Virginia", seed: [34, 13] },
+  WV: { name: "West Virginia", seed: [32, 12] },
+  MD: { name: "Maryland", seed: [36, 11] },
+  DE: { name: "Delaware", seed: [38, 11] },
   PA: { name: "Pennsylvania", seed: [34, 8] },
-  NJ: { name: "New Jersey", seed: [37, 9] },
-  NY: { name: "New York", seed: [34, 6] },
+  NJ: { name: "New Jersey", seed: [38, 9] },
+  NY: { name: "New York", seed: [35, 6] },
   CT: { name: "Connecticut", seed: [38, 7] },
   RI: { name: "Rhode Island", seed: [39, 7] },
   MA: { name: "Massachusetts", seed: [38, 6] },
@@ -526,18 +528,41 @@ function initSimulation() {
       }
 
       let bestId = null;
-      let minDist = 999999;
 
+      // Bottom Row Dock & Peninsula boundaries
       if (r >= 25) {
         if (c >= 1 && c <= 8) bestId = "AK";
         else if (c >= 10 && c <= 17) bestId = "HI";
         else if (c >= 39 && c <= 46) bestId = "PR";
         else if (c >= 31 && c <= 35) bestId = "FL";
       } else {
-        // Enforce the panhandle strip along the Gulf under Alabama
-        if ((r === 21 || r === 22) && (c >= 27 && c <= 31)) {
+        // 1. Oklahoma Panhandle (strip between KS and TX)
+        if (r === 14 && c >= 14 && c <= 17) {
+          bestId = "OK";
+        }
+        // 2. Horizontal Kentucky band
+        else if (r === 13 && c >= 25 && c <= 31) {
+          bestId = "KY";
+        }
+        // 3. Horizontal Tennessee band
+        else if (r === 15 && c >= 24 && c <= 31) {
+          bestId = "TN";
+        }
+        // 4. Mississippi Gulf Coast access (Biloxi)
+        else if ((r === 21 || r === 22) && (c >= 23 && c <= 25)) {
+          bestId = "MS";
+        }
+        // 5. Alabama Gulf Coast access (Mobile Bay)
+        else if ((r === 21 || r === 22) && (c >= 26 && c <= 27)) {
+          bestId = "AL";
+        }
+        // 6. Florida Panhandle (starts precisely at Pensacola border c=28, under AL and GA)
+        else if ((r === 21 || r === 22) && (c >= 28 && c <= 32)) {
           bestId = "FL";
-        } else {
+        }
+        // Standard distance calculation for all other states
+        else {
+          let minDist = 999999;
           Object.keys(STATE_DEFS).forEach(id => {
             if (["AK", "HI", "PR"].includes(id)) return;
             const def = STATE_DEFS[id];
@@ -567,7 +592,7 @@ function initSimulation() {
   renderMap();
   populateDropdown();
   updateUI();
-  addLog("Simulation initialized with Florida-Alabama panhandle border.", "log-dodge");
+  addLog("Simulation initialized with accurate regional geography.", "log-dodge");
 }
 
 function recalcCentroid(nationId) {
