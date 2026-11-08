@@ -528,7 +528,6 @@ function initSimulation() {
 
       let bestId = null;
 
-      // Bottom Row Dock & Peninsula boundaries
       if (r >= 25) {
         if (c >= 1 && c <= 8) bestId = "AK";
         else if (c >= 10 && c <= 17) bestId = "HI";
@@ -578,7 +577,7 @@ function initSimulation() {
   renderMap();
   populateDropdown();
   updateUI();
-  addLog("Simulation initialized with proximity elimination mechanics.", "log-dodge");
+  addLog("Simulation initialized. Realistic border combat rules active.", "log-dodge");
 }
 
 function recalcCentroid(nationId) {
@@ -689,7 +688,7 @@ function paintMap() {
   });
 }
 
-// Check proximity to hostile borders; annex if distance <= 5 cells, flash white & distribute pixels
+// Fixed Capital Defense: Only triggers if a shared direct neighbor attacks within 1 cell
 function checkCapitalDangerAndDodge(nationId) {
   const nation = nations[nationId];
   if (!nation || nation.cells.length === 0 || nation.isEliminated || nation.isMergedSub) return;
@@ -697,51 +696,50 @@ function checkCapitalDangerAndDodge(nationId) {
   const capCol = Math.floor(nation.capital.x / CELL_W);
   const capRow = Math.floor(nation.capital.y / CELL_H);
 
-  let nearestDist = 999;
-  let invadingId = null;
-
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      const cellOwner = grid[r][c];
-      if (cellOwner && cellOwner !== nationId && !nations[cellOwner].isEliminated) {
-        const d = Math.max(Math.abs(c - capCol), Math.abs(r - capRow));
-        if (d < nearestDist) {
-          nearestDist = d;
-          invadingId = cellOwner;
-        }
-      }
-    }
-  }
-
-  if (nearestDist <= 5 && invadingId) {
-    executeCapitalAnnexation(nationId, invadingId);
-    return;
-  }
-
-  let nearHostile = false;
+  let directlyThreatenedBy = null;
   const dirs = [[0,1], [0,-1], [1,0], [-1,0]];
+
   for (let [dc, dr] of dirs) {
     const nc = capCol + dc;
     const nr = capRow + dr;
     if (nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS) {
-      if (grid[nr][nc] && grid[nr][nc] !== nationId && !nations[grid[nr][nc]].isEliminated) {
-        nearHostile = true;
+      const neighborOwner = grid[nr][nc];
+      if (neighborOwner && neighborOwner !== nationId && !nations[neighborOwner].isEliminated) {
+        directlyThreatenedBy = neighborOwner;
         break;
       }
     }
   }
 
-  if (nearHostile) {
-    const safeCell = nation.cells[Math.floor(nation.cells.length / 2)];
-    nation.capital.x = (safeCell.col * CELL_W) + (CELL_W / 2);
-    nation.capital.y = (safeCell.row * CELL_H) + (CELL_H / 2);
+  if (directlyThreatenedBy) {
+    // Check if there is backline inland territory to retreat to
+    const safeCells = nation.cells.filter(cell => {
+      return dirs.every(([dc, dr]) => {
+        const nc = cell.col + dc;
+        const nr = cell.row + dr;
+        if (nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS) {
+          const o = grid[nr][nc];
+          return o === nationId || o === null;
+        }
+        return true;
+      });
+    });
 
-    const capEl = document.getElementById("cap-" + nationId);
-    if (capEl) {
-      capEl.classList.add("dodging");
-      setTimeout(() => capEl.classList.remove("dodging"), 400);
+    if (safeCells.length > 0) {
+      const targetCell = safeCells[0];
+      nation.capital.x = (targetCell.col * CELL_W) + (CELL_W / 2);
+      nation.capital.y = (targetCell.row * CELL_H) + (CELL_H / 2);
+
+      const capEl = document.getElementById("cap-" + nationId);
+      if (capEl) {
+        capEl.classList.add("dodging");
+        setTimeout(() => capEl.classList.remove("dodging"), 400);
+      }
+      addLog(`🚨 ${nation.name} capital evacuated deeper inland!`, "log-dodge");
+    } else {
+      // Nowhere left to retreat: fall and distribute territory
+      executeCapitalAnnexation(nationId, directlyThreatenedBy);
     }
-    addLog(`🚨 ${nation.name} capital evacuated deeper inland!`, "log-dodge");
   }
 }
 
@@ -762,14 +760,14 @@ function executeCapitalAnnexation(victimId, conquerorId) {
     if (rect) rect.setAttribute("fill", "#ffffff");
   });
 
-  addLog(`💥 CAPITAL OVERRUN: ${conqueror.name} reached within 5px of ${victim.name}'s capital! ${victim.name} is ELIMINATED!`, "log-war");
+  addLog(`💥 CAPITAL OVERRUN: ${conqueror.name} captured ${victim.name}'s last stronghold! ${victim.name} is ELIMINATED!`, "log-war");
   showToast(`${victim.name} fell to ${conqueror.name}!`);
 
   setTimeout(() => {
     distributeEliminatedTerritory(victimId, conquerorId);
     paintMap();
     updateUI();
-  }, 350);
+  }, 400);
 }
 
 function distributeEliminatedTerritory(victimId, primaryConquerorId) {
@@ -778,7 +776,7 @@ function distributeEliminatedTerritory(victimId, primaryConquerorId) {
   victim.cells = [];
   victim.coins = 0;
 
-  const dirs = [[0,1], [0,-1], [1,0], [-1,0], [1,1], [1,-1], [-1,1], [-1,-1]];
+  const dirs = [[0,1], [0,-1], [1,0], [-1,0]];
 
   oldCells.forEach(cell => {
     let chosenNeighbor = null;
