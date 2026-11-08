@@ -6,8 +6,8 @@
 <title>US Map Chaos Simulator</title>
 <style>
   :root {
-    --bg-ocean: #090e17;
-    --panel-bg: rgba(13, 19, 31, 0.96);
+    --bg-dark: #090e17;
+    --panel-bg: rgba(14, 20, 32, 0.96);
     --border-color: #26354a;
     --text-main: #f0f4fc;
     --text-dim: #8e9fb8;
@@ -56,92 +56,58 @@
     max-height: 98vh;
   }
 
-  /* Territory fill tiles (borderless base) */
-  .state-poly {
-    stroke: none;
+  /* Ages of Conflict Cell Tiles */
+  .cell-tile {
+    stroke: rgba(0, 0, 0, 0.15);
+    stroke-width: 0.5;
+    transition: fill 0.15s ease;
     cursor: pointer;
-    transition: fill 0.3s ease;
   }
 
-  .state-poly:hover {
-    filter: brightness(1.2);
-  }
-
-  /* Dynamic border layer lines */
-  .border-internal {
-    stroke: rgba(0, 0, 0, 0.45);
-    stroke-width: 0.8;
-    stroke-dasharray: 2, 2;
-    pointer-events: none;
-  }
-
-  .border-frontier {
-    stroke: #05080f;
-    stroke-width: 2.2;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    pointer-events: none;
-  }
-
-  .ocean-zone {
-    fill: rgba(20, 34, 56, 0.6);
-    stroke: #2a3f61;
-    stroke-width: 1.2;
-    stroke-dasharray: 4, 3;
+  .cell-tile.ocean {
+    stroke: rgba(255, 255, 255, 0.03);
     cursor: pointer;
-    transition: all 0.25s;
-  }
-
-  .ocean-zone:hover {
-    fill: rgba(32, 54, 88, 0.85);
-    stroke: var(--accent-gold);
-  }
-
-  .naval-lane {
-    stroke: rgba(255, 209, 102, 0.35);
-    stroke-width: 1.6;
-    stroke-dasharray: 4, 4;
-    fill: none;
-    pointer-events: none;
   }
 
   .dock-box {
     stroke: #25374f;
     stroke-width: 1.5;
     stroke-dasharray: 4, 4;
-    fill: rgba(10, 16, 28, 0.7);
+    fill: rgba(10, 16, 28, 0.5);
+    pointer-events: none;
   }
 
   .dock-label {
     fill: var(--text-dim);
-    font-size: 9px;
+    font-size: 10px;
     font-weight: 800;
     letter-spacing: 0.8px;
     text-transform: uppercase;
+    pointer-events: none;
   }
 
   .capital-marker {
     fill: #ffffff;
     stroke: #dc2626;
-    stroke-width: 2.4;
+    stroke-width: 2.2;
     filter: drop-shadow(0 0 4px rgba(0,0,0,0.9));
     cursor: pointer;
-    transition: cx 0.4s ease-out, cy 0.4s ease-out;
+    transition: cx 0.3s ease-out, cy 0.3s ease-out;
   }
 
   .capital-marker.dodging {
     fill: #ffd166;
     stroke: #ff0055;
-    filter: drop-shadow(0 0 8px #ff0055);
+    filter: drop-shadow(0 0 10px #ff0055);
   }
 
   .state-label {
     fill: #ffffff;
-    font-size: 8.5px;
+    font-size: 9px;
     font-weight: 900;
     text-anchor: middle;
     pointer-events: none;
-    text-shadow: 0 1px 3px rgba(0,0,0,0.95), 0 0 5px rgba(0,0,0,0.85);
+    text-shadow: 0 1px 3px rgba(0,0,0,0.95), 0 0 5px rgba(0,0,0,0.9);
   }
 
   /* HUD overlay */
@@ -364,45 +330,29 @@
     <div id="toast">Florida invaded Havana!</div>
 
     <svg id="map" viewBox="0 0 960 600">
-      <defs>
-        <pattern id="ocean-dots" width="16" height="16" patternUnits="userSpaceOnUse">
-          <circle cx="2" cy="2" r="0.8" fill="rgba(255,255,255,0.06)" />
-        </pattern>
-      </defs>
-
-      <rect width="960" height="600" fill="url(#ocean-dots)" />
-
-      <!-- Dock Sectors -->
+      <!-- Sector Dock Frames for Relocated States -->
       <g id="dock-frames">
-        <rect x="40" y="470" width="170" height="110" rx="8" class="dock-box" />
-        <text x="50" y="485" class="dock-label">Sector Alaska</text>
+        <rect x="40" y="470" width="160" height="110" rx="8" class="dock-box" />
+        <text x="50" y="488" class="dock-label">Sector Alaska</text>
 
-        <rect x="225" y="470" width="175" height="110" rx="8" class="dock-box" />
-        <text x="235" y="485" class="dock-label">Sector Hawaii</text>
+        <rect x="220" y="470" width="160" height="110" rx="8" class="dock-box" />
+        <text x="230" y="488" class="dock-label">Sector Hawaii</text>
 
-        <rect x="740" y="470" width="180" height="110" rx="8" class="dock-box" />
-        <text x="750" y="485" class="dock-label">Sector Puerto Rico</text>
+        <rect x="760" y="470" width="160" height="110" rx="8" class="dock-box" />
+        <text x="770" y="488" class="dock-label">Sector Puerto Rico</text>
       </g>
 
-      <!-- Ocean Trade & Conquest Routes -->
-      <g id="naval-lanes"></g>
+      <!-- Ages of Conflict Pixel Cell Layer -->
+      <g id="cell-grid"></g>
 
-      <!-- Base Fill Polygons -->
-      <g id="ocean-tiles"></g>
-      <g id="territories"></g>
-
-      <!-- Dynamic Frontiers / Dissolving Borders -->
-      <g id="dynamic-borders"></g>
-
-      <!-- Capital markers (auto-dodge & moveable) -->
+      <!-- Capitals Layer (Free to dodge anywhere on territory) -->
       <g id="capitals"></g>
 
-      <!-- Labels -->
+      <!-- Dynamic Nation Name Centroids -->
       <g id="labels"></g>
     </svg>
   </div>
 
-  <!-- Tablet Control Dashboard -->
   <div id="sidebar">
     <div class="panel-header">
       <div class="panel-title">⚡ STATE SIMULATOR</div>
@@ -434,196 +384,227 @@
 </div>
 
 <script>
-// --- EXACT-SEAM SHARED VERTEX TOPOLOGY ---
-// Shared vertex points guarantee 0 gaps between adjacent polygons
-const NODES = {
-  // PACIFIC NORTHWEST & WEST
-  WA: { name: "Washington", path: "M 80,45 L 155,50 L 150,105 L 75,100 Z", cx: 115, cy: 75, adj: ["OR", "ID"], ocean: ["PACIFIC_N"] },
-  OR: { name: "Oregon", path: "M 75,100 L 150,105 L 140,165 L 65,155 Z", cx: 110, cy: 130, adj: ["WA", "ID", "NV", "CA"], ocean: ["PACIFIC_N", "PACIFIC_MID"] },
-  CA: { name: "California", path: "M 65,155 L 140,165 L 120,275 L 105,335 L 65,305 Z", cx: 95, cy: 235, adj: ["OR", "NV", "AZ"], ocean: ["PACIFIC_MID", "PACIFIC_S"] },
-  ID: { name: "Idaho", path: "M 155,50 L 195,55 L 175,170 L 140,165 L 150,105 Z", cx: 165, cy: 110, adj: ["WA", "OR", "NV", "UT", "WY", "MT"], ocean: [] },
-  NV: { name: "Nevada", path: "M 140,165 L 198,175 L 180,270 L 120,275 Z", cx: 160, cy: 220, adj: ["CA", "OR", "ID", "UT", "AZ"], ocean: [] },
-  AZ: { name: "Arizona", path: "M 120,275 L 180,270 L 195,365 L 138,365 L 105,335 Z", cx: 155, cy: 320, adj: ["CA", "NV", "UT", "NM"], ocean: ["PACIFIC_S"] },
-  UT: { name: "Utah", path: "M 198,175 L 255,180 L 245,268 L 180,270 Z", cx: 218, cy: 222, adj: ["NV", "ID", "WY", "CO", "AZ", "NM"], ocean: [] },
-  MT: { name: "Montana", path: "M 195,55 L 330,65 L 320,135 L 175,125 Z", cx: 255, cy: 95, adj: ["ID", "WY", "ND", "SD"], ocean: [] },
-  WY: { name: "Wyoming", path: "M 190,130 L 320,135 L 310,200 L 185,195 Z", cx: 250, cy: 165, adj: ["MT", "ID", "UT", "CO", "NE", "SD"], ocean: [] },
-  CO: { name: "Colorado", path: "M 255,180 L 365,188 L 355,265 L 245,268 Z", cx: 305, cy: 225, adj: ["WY", "UT", "NM", "OK", "KS", "NE"], ocean: [] },
-  NM: { name: "New Mexico", path: "M 195,270 L 295,270 L 285,375 L 195,365 Z", cx: 245, cy: 320, adj: ["AZ", "UT", "CO", "OK", "TX"], ocean: [] },
+// --- AGES OF CONFLICT GRID FORMAT (48x30 CELL MAP) ---
+const COLS = 48;
+const ROWS = 30;
+const CELL_W = 20;
+const CELL_H = 20;
 
-  // GREAT PLAINS & MIDWEST
-  ND: { name: "North Dakota", path: "M 330,65 L 435,72 L 430,130 L 320,126 Z", cx: 375, cy: 98, adj: ["MT", "SD", "MN"], ocean: [] },
-  SD: { name: "South Dakota", path: "M 320,126 L 430,130 L 425,185 L 310,180 Z", cx: 370, cy: 155, adj: ["ND", "MT", "WY", "NE", "IA", "MN"], ocean: [] },
-  NE: { name: "Nebraska", path: "M 310,180 L 425,185 L 420,245 L 315,240 Z", cx: 368, cy: 212, adj: ["SD", "WY", "CO", "KS", "MO", "IA"], ocean: [] },
-  KS: { name: "Kansas", path: "M 315,240 L 420,245 L 415,305 L 310,300 Z", cx: 365, cy: 272, adj: ["NE", "CO", "OK", "MO"], ocean: [] },
-  OK: { name: "Oklahoma", path: "M 300,300 L 415,305 L 410,350 L 290,345 Z", cx: 355, cy: 325, adj: ["KS", "CO", "NM", "TX", "MO", "AR"], ocean: [] },
-  TX: { name: "Texas", path: "M 290,345 L 410,350 L 430,425 L 385,465 L 330,460 L 285,375 Z", cx: 350, cy: 405, adj: ["NM", "OK", "AR", "LA"], ocean: ["GULF_W"] },
-  MN: { name: "Minnesota", path: "M 435,72 L 505,78 L 490,165 L 430,158 Z", cx: 465, cy: 118, adj: ["ND", "SD", "IA", "WI"], ocean: [] },
-  IA: { name: "Iowa", path: "M 425,185 L 490,188 L 485,245 L 420,242 Z", cx: 455, cy: 215, adj: ["MN", "SD", "NE", "MO", "IL", "WI"], ocean: [] },
-  MO: { name: "Missouri", path: "M 420,245 L 485,248 L 480,320 L 415,315 Z", cx: 450, cy: 280, adj: ["IA", "NE", "KS", "OK", "AR", "TN", "KY", "IL"], ocean: [] },
-  AR: { name: "Arkansas", path: "M 415,315 L 475,320 L 468,382 L 410,378 Z", cx: 442, cy: 350, adj: ["MO", "OK", "TX", "LA", "MS", "TN"], ocean: [] },
-  LA: { name: "Louisiana", path: "M 410,378 L 468,382 L 460,445 L 412,435 Z", cx: 440, cy: 412, adj: ["TX", "AR", "MS"], ocean: ["GULF_W", "GULF_E"] },
-
-  // GREAT LAKES & CENTRAL
-  WI: { name: "Wisconsin", path: "M 495,108 L 550,112 L 542,185 L 488,180 Z", cx: 520, cy: 145, adj: ["MN", "IA", "IL", "MI"], ocean: [] },
-  IL: { name: "Illinois", path: "M 488,180 L 535,182 L 525,270 L 480,265 Z", cx: 508, cy: 225, adj: ["WI", "IA", "MO", "KY", "IN"], ocean: [] },
-  MI: { name: "Michigan", path: "M 552,112 L 610,118 L 595,195 L 542,190 Z", cx: 575, cy: 152, adj: ["WI", "IN", "OH"], ocean: [] },
-  IN: { name: "Indiana", path: "M 535,182 L 575,185 L 565,265 L 525,262 Z", cx: 550, cy: 225, adj: ["MI", "IL", "KY", "OH"], ocean: [] },
-  OH: { name: "Ohio", path: "M 575,185 L 625,188 L 612,255 L 565,252 Z", cx: 595, cy: 220, adj: ["MI", "IN", "KY", "WV", "PA"], ocean: [] },
-  KY: { name: "Kentucky", path: "M 505,268 L 605,262 L 595,302 L 498,305 Z", cx: 555, cy: 285, adj: ["IL", "IN", "OH", "WV", "VA", "TN", "MO"], ocean: [] },
-  TN: { name: "Tennessee", path: "M 495,305 L 610,302 L 600,340 L 485,342 Z", cx: 548, cy: 322, adj: ["KY", "MO", "AR", "MS", "AL", "GA", "NC", "VA"], ocean: [] },
-  MS: { name: "Mississippi", path: "M 468,348 L 508,348 L 500,432 L 460,430 Z", cx: 484, cy: 390, adj: ["TN", "AR", "LA", "AL"], ocean: ["GULF_W"] },
-  AL: { name: "Alabama", path: "M 508,348 L 550,348 L 542,435 L 500,432 Z", cx: 525, cy: 390, adj: ["TN", "MS", "GA", "FL"], ocean: ["GULF_E"] },
-
-  // SOUTHEAST & EAST
-  FL: { name: "Florida", path: "M 542,415 L 620,415 L 635,485 L 610,495 L 555,438 Z", cx: 595, cy: 450, adj: ["AL", "GA"], ocean: ["GULF_E", "ATLANTIC_S", "CARIBBEAN_TILE"] },
-  GA: { name: "Georgia", path: "M 550,345 L 612,342 L 605,420 L 542,420 Z", cx: 578, cy: 382, adj: ["FL", "AL", "TN", "NC", "SC"], ocean: ["ATLANTIC_S"] },
-  SC: { name: "South Carolina", path: "M 605,335 L 660,335 L 645,385 L 598,382 Z", cx: 628, cy: 360, adj: ["GA", "NC"], ocean: ["ATLANTIC_S"] },
-  NC: { name: "North Carolina", path: "M 595,298 L 690,298 L 670,340 L 590,338 Z", cx: 642, cy: 318, adj: ["VA", "TN", "GA", "SC"], ocean: ["ATLANTIC_MID"] },
-  VA: { name: "Virginia", path: "M 600,255 L 695,258 L 685,300 L 592,298 Z", cx: 646, cy: 278, adj: ["MD", "WV", "KY", "TN", "NC"], ocean: ["ATLANTIC_MID"] },
-  WV: { name: "West Virginia", path: "M 600,215 L 645,215 L 635,262 L 595,258 Z", cx: 620, cy: 238, adj: ["OH", "PA", "MD", "VA", "KY"], ocean: [] },
-  MD: { name: "Maryland", path: "M 645,222 L 702,224 L 698,255 L 642,252 Z", cx: 672, cy: 238, adj: ["PA", "DE", "VA", "WV"], ocean: ["ATLANTIC_MID"] },
-  DE: { name: "Delaware", path: "M 702,218 L 720,218 L 715,248 L 698,248 Z", cx: 709, cy: 233, adj: ["MD", "PA", "NJ"], ocean: ["ATLANTIC_MID"] },
-  PA: { name: "Pennsylvania", path: "M 625,175 L 712,180 L 705,225 L 615,220 Z", cx: 665, cy: 200, adj: ["NY", "NJ", "DE", "MD", "WV", "OH"], ocean: [] },
-  NJ: { name: "New Jersey", path: "M 712,185 L 735,185 L 726,242 L 705,238 Z", cx: 720, cy: 212, adj: ["NY", "DE", "PA"], ocean: ["ATLANTIC_N"] },
-
-  // NORTHEAST
-  NY: { name: "New York", path: "M 648,125 L 730,128 L 718,185 L 638,180 Z", cx: 685, cy: 155, adj: ["VT", "MA", "CT", "NJ", "PA"], ocean: ["ATLANTIC_N"] },
-  CT: { name: "Connecticut", path: "M 725,160 L 755,160 L 750,188 L 720,188 Z", cx: 738, cy: 174, adj: ["NY", "MA", "RI"], ocean: ["ATLANTIC_N"] },
-  RI: { name: "Rhode Island", path: "M 755,160 L 775,160 L 770,188 L 750,188 Z", cx: 762, cy: 174, adj: ["CT", "MA"], ocean: ["ATLANTIC_N"] },
-  MA: { name: "Massachusetts", path: "M 725,138 L 785,138 L 775,162 L 720,162 Z", cx: 752, cy: 150, adj: ["VT", "NH", "RI", "CT", "NY"], ocean: ["ATLANTIC_N"] },
-  VT: { name: "Vermont", path: "M 720,95 L 748,95 L 742,142 L 715,142 Z", cx: 732, cy: 118, adj: ["NY", "NH", "MA"], ocean: [] },
-  NH: { name: "New Hampshire", path: "M 748,90 L 775,90 L 770,142 L 742,142 Z", cx: 758, cy: 116, adj: ["VT", "ME", "MA"], ocean: ["ATLANTIC_N"] },
-  ME: { name: "Maine", path: "M 770,60 L 825,60 L 815,130 L 765,130 Z", cx: 795, cy: 95, adj: ["NH"], ocean: ["ATLANTIC_N"] },
-
-  // RELOCATED OFFSHORE DOCKS
-  AK: { name: "Alaska", path: "M 55,495 L 180,495 L 165,565 L 70,565 Z", cx: 120, cy: 530, adj: ["HI"], ocean: ["PACIFIC_S"] },
-  HI: { name: "Hawaii", path: "M 245,510 L 320,510 L 305,555 L 235,555 Z", cx: 275, cy: 532, adj: ["AK"], ocean: ["PACIFIC_S"] },
-  PR: { name: "Puerto Rico", path: "M 765,510 L 880,510 L 865,555 L 755,555 Z", cx: 818, cy: 532, adj: ["CARIBBEAN_TILE"], ocean: ["ATLANTIC_S", "CARIBBEAN_TILE"] },
-
-  // OCEAN ZONES
-  PACIFIC_N: { name: "Pacific NW Deep", path: "M 15,35 L 75,35 L 60,145 L 10,135 Z", cx: 42, cy: 88, adj: ["WA", "OR"], ocean: ["PACIFIC_MID"], isOceanHub: true },
-  PACIFIC_MID: { name: "California Current", path: "M 15,155 L 60,155 L 45,285 L 10,270 Z", cx: 35, cy: 215, adj: ["OR", "CA", "PACIFIC_N"], ocean: ["PACIFIC_S"], isOceanHub: true },
-  PACIFIC_S: { name: "Pacific Outpost", path: "M 15,295 L 55,310 L 45,430 L 10,410 Z", cx: 32, cy: 365, adj: ["CA", "AZ", "AK", "HI"], ocean: [], isOceanHub: true },
-  GULF_W: { name: "Western Gulf", path: "M 320,480 L 440,470 L 425,545 L 305,545 Z", cx: 372, cy: 508, adj: ["TX", "LA", "MS"], ocean: ["GULF_E"], isOceanHub: true },
-  GULF_E: { name: "Florida Straits", path: "M 455,465 L 565,455 L 545,545 L 438,545 Z", cx: 500, cy: 500, adj: ["AL", "FL", "LA", "GULF_W", "CARIBBEAN_TILE"], ocean: [], isOceanHub: true },
-  CARIBBEAN_TILE: { name: "Havana Sector", path: "M 585,475 L 710,475 L 690,565 L 575,565 Z", cx: 642, cy: 520, adj: ["FL", "PR", "GULF_E"], ocean: ["ATLANTIC_S"], isOceanHub: true },
-  ATLANTIC_S: { name: "Bermuda Trench", path: "M 675,370 L 780,370 L 760,470 L 655,460 Z", cx: 718, cy: 418, adj: ["FL", "GA", "SC", "PR", "CARIBBEAN_TILE"], ocean: ["ATLANTIC_MID"], isOceanHub: true },
-  ATLANTIC_MID: { name: "Chesapeake Basin", path: "M 735,260 L 850,260 L 820,365 L 705,355 Z", cx: 778, cy: 310, adj: ["NC", "VA", "MD", "DE", "ATLANTIC_S"], ocean: ["ATLANTIC_N"], isOceanHub: true },
-  ATLANTIC_N: { name: "New England Shelf", path: "M 800,120 L 920,120 L 880,245 L 760,240 Z", cx: 840, cy: 180, adj: ["ME", "NH", "MA", "CT", "RI", "NJ", "NY", "ATLANTIC_MID"], ocean: [], isOceanHub: true }
-};
-
+// Vibrant colors for nations
 const VIBRANT_COLORS = [
   "#ef476f", "#f78c6c", "#ffd166", "#06d6a0", "#118ab2",
-  "#073b4c", "#8338ec", "#3a86ff", "#ff006e", "#fb5607",
-  "#70e000", "#38bdf8", "#a855f7", "#ec4899", "#14b8a6",
-  "#f43f5e", "#6366f1", "#84cc16", "#eab308", "#06b6d4"
+  "#8338ec", "#3a86ff", "#ff006e", "#fb5607", "#70e000",
+  "#38bdf8", "#a855f7", "#ec4899", "#14b8a6", "#f43f5e",
+  "#6366f1", "#84cc16", "#eab308", "#06b6d4", "#f97316"
 ];
 
-let stateData = {};
+// 50 States + Puerto Rico + Ocean Zones
+const STATE_DEFS = {
+  // Pacific
+  WA: { name: "Washington", seed: [6, 3] },
+  OR: { name: "Oregon", seed: [5, 6] },
+  CA: { name: "California", seed: [4, 12] },
+  ID: { name: "Idaho", seed: [8, 5] },
+  NV: { name: "Nevada", seed: [7, 10] },
+  AZ: { name: "Arizona", seed: [8, 16] },
+  UT: { name: "Utah", seed: [11, 10] },
+  MT: { name: "Montana", seed: [13, 4] },
+  WY: { name: "Wyoming", seed: [13, 8] },
+  CO: { name: "Colorado", seed: [15, 11] },
+  NM: { name: "New Mexico", seed: [13, 16] },
+
+  // Midwest / Plains
+  ND: { name: "North Dakota", seed: [19, 4] },
+  SD: { name: "South Dakota", seed: [19, 7] },
+  NE: { name: "Nebraska", seed: [19, 10] },
+  KS: { name: "Kansas", seed: [19, 13] },
+  OK: { name: "Oklahoma", seed: [19, 16] },
+  TX: { name: "Texas", seed: [18, 20] },
+  MN: { name: "Minnesota", seed: [23, 5] },
+  IA: { name: "Iowa", seed: [23, 10] },
+  MO: { name: "Missouri", seed: [23, 13] },
+  AR: { name: "Arkansas", seed: [23, 17] },
+  LA: { name: "Louisiana", seed: [23, 21] },
+
+  // Central / Lakes
+  WI: { name: "Wisconsin", seed: [26, 7] },
+  IL: { name: "Illinois", seed: [26, 11] },
+  MI: { name: "Michigan", seed: [29, 7] },
+  IN: { name: "Indiana", seed: [28, 11] },
+  OH: { name: "Ohio", seed: [31, 10] },
+  KY: { name: "Kentucky", seed: [29, 14] },
+  TN: { name: "Tennessee", seed: [29, 16] },
+  MS: { name: "Mississippi", seed: [26, 19] },
+  AL: { name: "Alabama", seed: [28, 19] },
+
+  // Southeast & East
+  FL: { name: "Florida", seed: [32, 23] },
+  GA: { name: "Georgia", seed: [31, 19] },
+  SC: { name: "South Carolina", seed: [34, 18] },
+  NC: { name: "North Carolina", seed: [34, 15] },
+  VA: { name: "Virginia", seed: [34, 13] },
+  WV: { name: "West Virginia", seed: [32, 12] },
+  MD: { name: "Maryland", seed: [36, 11] },
+  DE: { name: "Delaware", seed: [38, 11] },
+  PA: { name: "Pennsylvania", seed: [35, 9] },
+  NJ: { name: "New Jersey", seed: [38, 10] },
+
+  // Northeast
+  NY: { name: "New York", seed: [35, 7] },
+  CT: { name: "Connecticut", seed: [39, 8] },
+  RI: { name: "Rhode Island", seed: [40, 8] },
+  MA: { name: "Massachusetts", seed: [39, 7] },
+  VT: { name: "Vermont", seed: [37, 5] },
+  NH: { name: "New Hampshire", seed: [39, 5] },
+  ME: { name: "Maine", seed: [41, 4] },
+
+  // Relocated Docks
+  AK: { name: "Alaska", seed: [4, 26] },
+  HI: { name: "Hawaii", seed: [13, 26] },
+  PR: { name: "Puerto Rico", seed: [41, 26] },
+
+  // Annexable Ocean Hubs
+  PACIFIC_N: { name: "North Pacific", seed: [1, 4], isOcean: true },
+  PACIFIC_S: { name: "South Pacific", seed: [1, 16], isOcean: true },
+  GULF_ZONE: { name: "Gulf of Mexico", seed: [20, 24], isOcean: true },
+  CARIBBEAN: { name: "Caribbean", seed: [34, 26], isOcean: true },
+  ATLANTIC_MID: { name: "Mid Atlantic", seed: [42, 15], isOcean: true },
+  ATLANTIC_N: { name: "North Atlantic", seed: [44, 8], isOcean: true }
+};
+
+let grid = []; // 2D array of cell ownership
 let nations = {};
 let year = 1;
 let isRunning = false;
 let simInterval = null;
 
+// Initialize Ages-of-Conflict Voronoi Cell Field
 function initSimulation() {
-  stateData = {};
+  grid = [];
   nations = {};
   let colorIdx = 0;
 
-  Object.keys(NODES).forEach((id) => {
-    const node = NODES[id];
-    const isOcean = !!node.isOceanHub;
-    const initialCoins = isOcean ? 150 : Math.floor(Math.random() * 800) + 400;
+  // Setup Nations
+  Object.keys(STATE_DEFS).forEach(id => {
+    const def = STATE_DEFS[id];
+    const isOcean = !!def.isOcean;
 
     nations[id] = {
       id: id,
-      name: node.name,
-      color: isOcean ? "#16253b" : VIBRANT_COLORS[colorIdx % VIBRANT_COLORS.length],
-      coins: initialCoins,
-      territories: [id],
+      name: def.name,
+      color: isOcean ? "#111d2e" : VIBRANT_COLORS[colorIdx % VIBRANT_COLORS.length],
+      coins: isOcean ? 100 : Math.floor(Math.random() * 800) + 400,
+      cells: [],
       allies: [],
       mergedWith: null,
       isMergedSub: false,
-      capital: { x: node.cx, y: node.cy, currentRegion: id },
-      originalOwner: id,
-      isOceanHub: isOcean
+      capital: { x: 0, y: 0, col: def.seed[0], row: def.seed[1] },
+      isOcean: isOcean
     };
 
     if (!isOcean) colorIdx++;
-    stateData[id] = { owner: id };
+  });
+
+  // Build Grid & Assign Cells to Closest Seed (True Voronoi Territory generation)
+  for (let r = 0; r < ROWS; r++) {
+    grid[r] = [];
+    for (let c = 0; c < COLS; c++) {
+      // Mainland bounding & Dock boundaries
+      let bestId = null;
+      let minDist = 999999;
+
+      // Restrict Dock zones strictly
+      if (r >= 24) {
+        if (c >= 2 && c <= 9) bestId = "AK";
+        else if (c >= 11 && c <= 18) bestId = "HI";
+        else if (c >= 38 && c <= 45) bestId = "PR";
+        else if (c >= 28 && c <= 37) bestId = "CARIBBEAN";
+        else bestId = "GULF_ZONE";
+      } else {
+        // Upper Mainland & Ocean assignments
+        Object.keys(STATE_DEFS).forEach(id => {
+          const def = STATE_DEFS[id];
+          if (["AK", "HI", "PR"].includes(id)) return; // don't leak out of docks
+          
+          const dx = c - def.seed[0];
+          const dy = r - def.seed[1];
+          const dist = (dx * dx) + (dy * dy);
+
+          if (dist < minDist) {
+            minDist = dist;
+            bestId = id;
+          }
+        });
+      }
+
+      grid[r][c] = bestId;
+      nations[bestId].cells.push({ col: c, row: r });
+    }
+  }
+
+  // Update Nation Capitals to actual centroids
+  Object.keys(nations).forEach(id => {
+    recalcCentroid(id);
   });
 
   renderMap();
   populateDropdown();
   updateUI();
-  addLog("Dynamic border simulator ready. Shared seams active.", "log-dodge");
+  addLog("Ages of Conflict Voronoi Grid initialized. Zero wireframe borders.", "log-dodge");
 }
 
+function recalcCentroid(nationId) {
+  const nation = nations[nationId];
+  if (!nation || nation.cells.length === 0) return;
+
+  let sumX = 0, sumY = 0;
+  nation.cells.forEach(cell => {
+    sumX += (cell.col * CELL_W) + (CELL_W / 2);
+    sumY += (cell.row * CELL_H) + (CELL_H / 2);
+  });
+
+  nation.capital.x = Math.round(sumX / nation.cells.length);
+  nation.capital.y = Math.round(sumY / nation.cells.length);
+}
+
+// Render DOM cells
 function renderMap() {
-  const terrGroup = document.getElementById("territories");
-  const oceanGroup = document.getElementById("ocean-tiles");
+  const cellGroup = document.getElementById("cell-grid");
   const capGroup = document.getElementById("capitals");
   const lblGroup = document.getElementById("labels");
-  const laneGroup = document.getElementById("naval-lanes");
 
-  terrGroup.innerHTML = "";
-  oceanGroup.innerHTML = "";
+  cellGroup.innerHTML = "";
   capGroup.innerHTML = "";
   lblGroup.innerHTML = "";
-  laneGroup.innerHTML = "";
 
-  // Render Ocean Lines
-  Object.keys(NODES).forEach(id => {
-    const node = NODES[id];
-    node.adj.forEach(targetId => {
-      const target = NODES[targetId];
-      if ((node.isOceanHub || target.isOceanHub) && id < targetId) {
-        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-        line.setAttribute("x1", node.cx);
-        line.setAttribute("y1", node.cy);
-        line.setAttribute("x2", target.cx);
-        line.setAttribute("y2", target.cy);
-        line.setAttribute("class", "naval-lane");
-        laneGroup.appendChild(line);
-      }
-    });
-  });
+  // Render SVG Rectangles for all cells
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const ownerId = grid[r][c];
+      const nation = nations[ownerId];
 
-  // Base Polygons
-  Object.keys(NODES).forEach((id) => {
-    const node = NODES[id];
-    const path = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    path.setAttribute("d", node.path);
-    path.setAttribute("id", "poly-" + id);
-    path.addEventListener("click", () => handleTerritoryClick(id));
-
-    if (node.isOceanHub) {
-      path.setAttribute("class", "ocean-zone");
-      oceanGroup.appendChild(path);
-    } else {
-      path.setAttribute("class", "state-poly");
-      terrGroup.appendChild(path);
+      const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+      rect.setAttribute("x", c * CELL_W);
+      rect.setAttribute("y", r * CELL_H);
+      rect.setAttribute("width", CELL_W);
+      rect.setAttribute("height", CELL_H);
+      rect.setAttribute("id", `cell-${c}-${r}`);
+      rect.setAttribute("class", nation.isOcean ? "cell-tile ocean" : "cell-tile");
+      rect.setAttribute("fill", nation.color);
+      rect.addEventListener("click", () => handleCellClick(c, r));
+      cellGroup.appendChild(rect);
     }
+  }
 
-    // Label
-    const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
-    txt.setAttribute("x", node.cx);
-    txt.setAttribute("y", node.cy + 3);
-    txt.setAttribute("id", "lbl-" + id);
-    txt.setAttribute("class", "state-label");
-    txt.textContent = id.replace(/_TILE|_NW|_MID|_N|_S|_E|_W/g, '');
-    lblGroup.appendChild(txt);
-  });
-
-  // Capital Dots
-  Object.keys(nations).forEach((id) => {
+  // Render Capitals
+  Object.keys(nations).forEach(id => {
     const nation = nations[id];
-    if (nation.isOceanHub) return;
+    if (nation.isOcean) return;
 
     const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle");
     circle.setAttribute("cx", nation.capital.x);
     circle.setAttribute("cy", nation.capital.y);
-    circle.setAttribute("r", 4.2);
+    circle.setAttribute("r", 5);
     circle.setAttribute("id", "cap-" + id);
     circle.setAttribute("class", "capital-marker");
     circle.addEventListener("click", (e) => {
@@ -631,147 +612,117 @@ function renderMap() {
       manualMoveCapital(id);
     });
     capGroup.appendChild(circle);
-  });
 
-  paintMap();
-}
-
-// --- DYNAMIC BORDER DISSOLVE ENGINE ---
-// Re-draws dynamic stroke overlays: Internal annexed borders dissolve/fade,
-// while external empire frontiers thicken and redraw cleanly!
-function updateDynamicBorders() {
-  const borderGroup = document.getElementById("dynamic-borders");
-  borderGroup.innerHTML = "";
-
-  Object.keys(NODES).forEach(id => {
-    const ownerId = stateData[id].owner;
-    const node = NODES[id];
-
-    node.adj.forEach(neighborId => {
-      if (id >= neighborId) return; // avoid duplicates
-      const neighborOwnerId = stateData[neighborId].owner;
-      const neighborNode = NODES[neighborId];
-
-      const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
-      line.setAttribute("x1", node.cx);
-      line.setAttribute("y1", node.cy);
-      line.setAttribute("x2", neighborNode.cx);
-      line.setAttribute("y2", neighborNode.cy);
-
-      // If owners are the same (merged or annexed), border dissolves into faint internal dash
-      if (ownerId === neighborOwnerId) {
-        line.setAttribute("class", "border-internal");
-      } else {
-        // True international hostile border line
-        line.setAttribute("class", "border-frontier");
-      }
-      borderGroup.appendChild(line);
-    });
-
-    // Also update polygon outer stroke to reflect owner's frontier
-    const poly = document.getElementById("poly-" + id);
-    if (poly) {
-      // If surrounded only by same owner, remove harsh outer boundary
-      const isSurrounded = node.adj.every(adjId => stateData[adjId].owner === ownerId);
-      if (isSurrounded) {
-        poly.style.stroke = "none";
-      } else {
-        poly.style.stroke = "#05080f";
-        poly.style.strokeWidth = "1.8px";
-      }
-    }
+    const txt = document.createElementNS("http://www.w3.org/2000/svg", "text");
+    txt.setAttribute("x", nation.capital.x);
+    txt.setAttribute("y", nation.capital.y - 7);
+    txt.setAttribute("id", "lbl-" + id);
+    txt.setAttribute("class", "state-label");
+    txt.textContent = id;
+    lblGroup.appendChild(txt);
   });
 }
 
+// Fast dynamic redraw
 function paintMap() {
-  // Update Fills
-  Object.keys(NODES).forEach((id) => {
-    const ownerId = stateData[id].owner;
-    const ownerNation = nations[ownerId];
-    const poly = document.getElementById("poly-" + id);
-    if (poly && ownerNation) {
-      poly.setAttribute("fill", ownerNation.color);
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      const ownerId = grid[r][c];
+      const nation = nations[ownerId];
+      const el = document.getElementById(`cell-${c}-${r}`);
+      if (el && nation) {
+        el.setAttribute("fill", nation.color);
+      }
     }
-  });
+  }
 
-  // Update Capitals
-  Object.keys(nations).forEach((id) => {
+  // Update Capitals & Labels
+  Object.keys(nations).forEach(id => {
     const nation = nations[id];
-    const capCircle = document.getElementById("cap-" + id);
-    if (!capCircle) return;
+    const cap = document.getElementById("cap-" + id);
+    const lbl = document.getElementById("lbl-" + id);
 
-    if (nation.territories.length === 0 || nation.isMergedSub) {
-      capCircle.style.display = "none";
+    if (!cap || !lbl) return;
+
+    if (nation.cells.length === 0 || nation.isMergedSub) {
+      cap.style.display = "none";
+      lbl.style.display = "none";
     } else {
-      capCircle.style.display = "block";
-      capCircle.setAttribute("cx", nation.capital.x);
-      capCircle.setAttribute("cy", nation.capital.y);
+      cap.style.display = "block";
+      lbl.style.display = "block";
+      cap.setAttribute("cx", nation.capital.x);
+      cap.setAttribute("cy", nation.capital.y);
+      lbl.setAttribute("x", nation.capital.x);
+      lbl.setAttribute("y", nation.capital.y - 7);
     }
   });
-
-  updateDynamicBorders();
 }
 
-// Dynamic Capital Retreat
+// Intelligent Capital Dodge
 function checkCapitalDangerAndDodge(nationId) {
   const nation = nations[nationId];
-  if (!nation || nation.territories.length <= 1) return;
+  if (!nation || nation.cells.length <= 3) return;
 
-  const currentReg = nation.capital.currentRegion;
-  const adjacent = NODES[currentReg].adj;
-  const inDanger = adjacent.some(adjId => stateData[adjId].owner !== nationId);
+  // Check if current capital coordinates are under enemy adjacent threat
+  const capCol = Math.floor(nation.capital.x / CELL_W);
+  const capRow = Math.floor(nation.capital.y / CELL_H);
 
-  if (inDanger) {
-    const safeRegions = nation.territories.filter(tId => {
-      return !NODES[tId].adj.some(adjId => stateData[adjId].owner !== nationId);
-    });
-
-    const targetRegionId = safeRegions.length > 0 ? safeRegions[0] : nation.territories.find(t => t !== currentReg);
-
-    if (targetRegionId && targetRegionId !== currentReg) {
-      nation.capital.currentRegion = targetRegionId;
-      nation.capital.x = NODES[targetRegionId].cx;
-      nation.capital.y = NODES[targetRegionId].cy;
-
-      const capCircle = document.getElementById("cap-" + nationId);
-      if (capCircle) {
-        capCircle.classList.add("dodging");
-        setTimeout(() => capCircle.classList.remove("dodging"), 500);
+  let nearHostile = false;
+  const dirs = [[0,1], [0,-1], [1,0], [-1,0]];
+  for (let [dc, dr] of dirs) {
+    const nc = capCol + dc;
+    const nr = capRow + dr;
+    if (nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS) {
+      if (grid[nr][nc] !== nationId) {
+        nearHostile = true;
+        break;
       }
-      addLog(`🚨 ${nation.name} capital evacuated from ${currentReg} to ${targetRegionId}!`, "log-dodge");
     }
+  }
+
+  if (nearHostile) {
+    // Pick deep safe cell furthest from borders
+    const safeCell = nation.cells[Math.floor(nation.cells.length / 2)];
+    nation.capital.x = (safeCell.col * CELL_W) + (CELL_W / 2);
+    nation.capital.y = (safeCell.row * CELL_H) + (CELL_H / 2);
+
+    const capEl = document.getElementById("cap-" + nationId);
+    if (capEl) {
+      capEl.classList.add("dodging");
+      setTimeout(() => capEl.classList.remove("dodging"), 400);
+    }
+    addLog(`🚨 ${nation.name} capital evacuated deeper inland!`, "log-dodge");
   }
 }
 
 function manualMoveCapital(nationId) {
   const nation = nations[nationId];
-  if (!nation || nation.territories.length === 0) return;
-  const currentIndex = nation.territories.indexOf(nation.capital.currentRegion);
-  const nextRegion = nation.territories[(currentIndex + 1) % nation.territories.length];
-  
-  nation.capital.currentRegion = nextRegion;
-  nation.capital.x = NODES[nextRegion].cx;
-  nation.capital.y = NODES[nextRegion].cy;
+  if (!nation || nation.cells.length === 0) return;
+  const randomCell = nation.cells[Math.floor(Math.random() * nation.cells.length)];
+  nation.capital.x = (randomCell.col * CELL_W) + (CELL_W / 2);
+  nation.capital.y = (randomCell.row * CELL_H) + (CELL_H / 2);
   paintMap();
-  showToast(`${nation.name} relocated capital to ${nextRegion}!`);
+  showToast(`${nation.name} manually moved capital!`);
 }
 
+// Ages of Conflict Simulation Step
 function stepTurn() {
   year++;
   document.getElementById("year-count").textContent = year;
 
+  // Economy & resource maintenance
   Object.keys(nations).forEach(id => {
     const nation = nations[id];
-    if (nation.territories.length === 0 || nation.isMergedSub) return;
+    if (nation.cells.length === 0 || nation.isMergedSub) return;
 
-    const income = (nation.territories.length * 40) + Math.floor(Math.random() * 25);
-    const drain = Math.floor(nation.territories.length * 12);
-    nation.coins = Math.max(0, nation.coins + income - drain);
+    const income = (nation.cells.length * 6) + Math.floor(Math.random() * 15);
+    const upkeep = Math.floor(nation.cells.length * 2);
+    nation.coins = Math.max(0, nation.coins + income - upkeep);
 
     checkCapitalDangerAndDodge(id);
   });
 
-  const activeIds = Object.keys(nations).filter(id => nations[id].territories.length > 0 && !nations[id].isMergedSub);
+  const activeIds = Object.keys(nations).filter(id => nations[id].cells.length > 0 && !nations[id].isMergedSub);
   if (activeIds.length <= 1) {
     pauseSimulation();
     showToast(`Simulation ended! Champion: ${nations[activeIds[0]].name}`);
@@ -782,37 +733,100 @@ function stepTurn() {
   const actor = nations[actorId];
   const roll = Math.random();
 
+  // 1. Buyout Frontier Chunk
   if (roll < 0.28 && actor.coins >= 450) {
-    attemptTerritoryPurchase(actor);
-  } else if (roll < 0.45) {
+    attemptChunkPurchase(actor);
+  }
+  // 2. Alliance
+  else if (roll < 0.44) {
     attemptAlliance(actor, activeIds);
-  } else if (roll < 0.58 && actor.territories.length < 3) {
+  }
+  // 3. Coalition Merge
+  else if (roll < 0.58 && actor.cells.length < 15) {
     attemptWartimeMerge(actor, activeIds);
-  } else if (roll < 0.72) {
+  }
+  // 4. Revolt
+  else if (roll < 0.72) {
     attemptRevolt(activeIds);
-  } else {
-    attemptWarConquest(actor);
+  }
+  // 5. Military Frontier Push
+  else {
+    attemptMilitaryPush(actor);
   }
 
   paintMap();
   updateUI();
 }
 
-function attemptTerritoryPurchase(actor) {
-  const targets = findForeignNeighbors(actor);
-  if (targets.length === 0) return;
+// Military Frontier Push: Annexes 3-8 contiguous border cells from neighbor
+function attemptMilitaryPush(actor) {
+  const frontierCells = findFrontierCells(actor);
+  if (frontierCells.length === 0) return;
 
-  const targetTerrId = targets[Math.floor(Math.random() * targets.length)];
-  const targetOwnerId = stateData[targetTerrId].owner;
-  const seller = nations[targetOwnerId];
+  const target = frontierCells[Math.floor(Math.random() * frontierCells.length)];
+  const defenderId = grid[target.row][target.col];
+  const defender = nations[defenderId];
 
-  const price = 400 + (seller.territories.length * 50);
+  if (actor.allies.includes(defenderId)) {
+    if (Math.random() < 0.6) return;
+    actor.allies = actor.allies.filter(a => a !== defenderId);
+    defender.allies = defender.allies.filter(a => a !== actor.id);
+    addLog(`💔 Alliance broken: ${actor.name} attacked ${defender.name}!`, "log-war");
+  }
+
+  const attackerPower = (actor.cells.length * 2) + (actor.coins * 0.1) + (Math.random() * 20);
+  const defenderPower = (defender.cells.length * 2) + (defender.coins * 0.1) + (Math.random() * 20);
+
+  if (attackerPower >= defenderPower * 0.85) {
+    // Push across frontier (3 to 6 cells)
+    const conquered = Math.min(defender.cells.length, Math.floor(Math.random() * 4) + 3);
+    for (let i = 0; i < conquered; i++) {
+      if (defender.cells.length === 0) break;
+      const c = defender.cells.pop();
+      grid[c.row][c.col] = actor.id;
+      actor.cells.push(c);
+    }
+
+    actor.coins = Math.max(0, actor.coins - 35);
+    recalcCentroid(actor.id);
+    recalcCentroid(defender.id);
+
+    if (defender.cells.length === 0) {
+      addLog(`💀 ${defender.name} was wiped out completely by ${actor.name}!`, "log-war");
+    } else {
+      addLog(`⚔️ ${actor.name} conquered borderlands from ${defender.name}!`, "log-war");
+    }
+  } else {
+    actor.coins = Math.max(0, actor.coins - 80);
+    addLog(`🛡️ ${defender.name} held ground against ${actor.name}!`, "log-dodge");
+  }
+}
+
+// Buyout Chunk
+function attemptChunkPurchase(actor) {
+  const frontier = findFrontierCells(actor);
+  if (frontier.length === 0) return;
+
+  const target = frontier[Math.floor(Math.random() * frontier.length)];
+  const sellerId = grid[target.row][target.col];
+  const seller = nations[sellerId];
+
+  const price = 300 + (seller.cells.length * 10);
   if (actor.coins >= price) {
     actor.coins -= price;
     seller.coins += Math.floor(price * 0.85);
 
-    transferTerritory(targetTerrId, actor.id);
-    addLog(`💰 ${actor.name} bought ${targetTerrId} from ${seller.name} for ${price} coins!`, "log-buy");
+    // Transfer 4 cells
+    for (let i = 0; i < 4; i++) {
+      if (seller.cells.length <= 1) break;
+      const c = seller.cells.pop();
+      grid[c.row][c.col] = actor.id;
+      actor.cells.push(c);
+    }
+
+    recalcCentroid(actor.id);
+    recalcCentroid(seller.id);
+    addLog(`💰 ${actor.name} purchased border territory from ${seller.name} for ${price} coins!`, "log-buy");
   }
 }
 
@@ -826,128 +840,85 @@ function attemptAlliance(actor, activeIds) {
   addLog(`🤝 Alliance: ${actor.name} & ${nations[allyId].name}!`, "log-alliance");
 }
 
-function attemptWarConquest(actor) {
-  const neighbors = findForeignNeighbors(actor);
-  if (neighbors.length === 0) return;
-
-  const targetTerrId = neighbors[Math.floor(Math.random() * neighbors.length)];
-  const defenderId = stateData[targetTerrId].owner;
-  const defender = nations[defenderId];
-
-  if (actor.allies.includes(defenderId)) {
-    if (Math.random() < 0.6) return;
-    actor.allies = actor.allies.filter(a => a !== defenderId);
-    defender.allies = defender.allies.filter(a => a !== actor.id);
-    addLog(`💔 Alliance broken: ${actor.name} attacked ${defender.name}!`, "log-war");
-  }
-
-  const attackerPower = (actor.territories.length * 20) + (actor.coins * 0.08) + (Math.random() * 40);
-  const defenderPower = (defender.territories.length * 20) + (defender.coins * 0.08) + (Math.random() * 40);
-
-  if (attackerPower >= defenderPower * 0.85) {
-    transferTerritory(targetTerrId, actor.id);
-    actor.coins = Math.max(0, actor.coins - 40);
-
-    if (defender.capital.currentRegion === targetTerrId) {
-      if (defender.territories.length > 0) {
-        const fallback = defender.territories[0];
-        defender.capital.currentRegion = fallback;
-        defender.capital.x = NODES[fallback].cx;
-        defender.capital.y = NODES[fallback].cy;
-        addLog(`⚔️ ${actor.name} seized capital at ${targetTerrId}! ${defender.name} fled to ${fallback}!`, "log-war");
-      } else {
-        addLog(`💀 ${defender.name} was wiped out by ${actor.name}!`, "log-war");
-      }
-    } else {
-      addLog(`⚔️ ${actor.name} annexed ${targetTerrId} from ${defender.name}!`, "log-war");
-    }
-  } else {
-    actor.coins = Math.max(0, actor.coins - 100);
-    addLog(`🛡️ ${defender.name} repelled ${actor.name} at ${targetTerrId}!`, "log-dodge");
-  }
-}
-
 function attemptWartimeMerge(actor, activeIds) {
-  const neighbors = findForeignNeighbors(actor);
-  const friendlies = neighbors.filter(id => {
-    const owner = stateData[id].owner;
-    return owner !== actor.id && nations[owner].territories.length <= 3;
+  const frontier = findFrontierCells(actor);
+  const smallNeighbors = frontier.map(f => grid[f.row][f.col]).filter(id => id !== actor.id && nations[id].cells.length <= 12);
+  if (smallNeighbors.length === 0) return;
+
+  const partnerId = smallNeighbors[0];
+  const partner = nations[partnerId];
+
+  partner.cells.forEach(c => {
+    grid[c.row][c.col] = actor.id;
+    actor.cells.push(c);
   });
-
-  if (friendlies.length === 0) return;
-  const partnerOwnerId = stateData[friendlies[0]].owner;
-  const partner = nations[partnerOwnerId];
-
-  partner.territories.forEach(tId => transferTerritory(tId, actor.id));
+  partner.cells = [];
   partner.isMergedSub = true;
   partner.mergedWith = actor.id;
   actor.coins += partner.coins;
   partner.coins = 0;
 
-  addLog(`🧬 MERGER: ${partner.name} merged into ${actor.name} for survival!`, "log-merge");
+  recalcCentroid(actor.id);
+  addLog(`🧬 MERGER: ${partner.name} combined into ${actor.name} for mutual defense!`, "log-merge");
 }
 
 function attemptRevolt(activeIds) {
-  const empires = activeIds.filter(id => nations[id].territories.length >= 3);
+  const empires = activeIds.filter(id => nations[id].cells.length >= 25);
   if (empires.length === 0) return;
 
   const targetEmpire = nations[empires[Math.floor(Math.random() * empires.length)]];
-  const eligibleRevolts = targetEmpire.territories.filter(tId => tId !== targetEmpire.capital.currentRegion);
-  if (eligibleRevolts.length === 0) return;
+  const rebelNationIds = Object.keys(nations).filter(id => nations[id].cells.length === 0 && !nations[id].isOcean);
+  if (rebelNationIds.length === 0) return;
 
-  const revoltTerrId = eligibleRevolts[Math.floor(Math.random() * eligibleRevolts.length)];
-  const revivedNation = nations[revoltTerrId];
+  const rebelId = rebelNationIds[Math.floor(Math.random() * rebelNationIds.length)];
+  const rebel = nations[rebelId];
 
-  if (revivedNation) {
-    revivedNation.isMergedSub = false;
-    revivedNation.mergedWith = null;
-    revivedNation.coins = 350;
-    revivedNation.capital.currentRegion = revoltTerrId;
-    revivedNation.capital.x = NODES[revoltTerrId].cx;
-    revivedNation.capital.y = NODES[revoltTerrId].cy;
+  rebel.isMergedSub = false;
+  rebel.mergedWith = null;
+  rebel.coins = 350;
 
-    transferTerritory(revoltTerrId, revivedNation.id);
-    addLog(`🔥 REVOLT! ${revivedNation.name} broke free from ${targetEmpire.name}!`, "log-revolt");
+  // Carve out 8 cells
+  for (let i = 0; i < 8; i++) {
+    if (targetEmpire.cells.length <= 5) break;
+    const c = targetEmpire.cells.pop();
+    grid[c.row][c.col] = rebel.id;
+    rebel.cells.push(c);
   }
+
+  recalcCentroid(rebel.id);
+  recalcCentroid(targetEmpire.id);
+  addLog(`🔥 REVOLT! ${rebel.name} declared independence from ${targetEmpire.name}!`, "log-revolt");
 }
 
-function transferTerritory(territoryId, newOwnerId) {
-  const oldOwnerId = stateData[territoryId].owner;
-  if (oldOwnerId && nations[oldOwnerId]) {
-    nations[oldOwnerId].territories = nations[oldOwnerId].territories.filter(t => t !== territoryId);
-  }
-  stateData[territoryId].owner = newOwnerId;
-  if (!nations[newOwnerId].territories.includes(territoryId)) {
-    nations[newOwnerId].territories.push(territoryId);
-  }
-}
+function findFrontierCells(actor) {
+  const frontiers = [];
+  const dirs = [[0,1], [0,-1], [1,0], [-1,0]];
 
-function findForeignNeighbors(actor) {
-  const neighbors = new Set();
-  actor.territories.forEach(tId => {
-    const node = NODES[tId];
-    if (node && node.adj) {
-      node.adj.forEach(adjId => {
-        if (stateData[adjId].owner !== actor.id) {
-          neighbors.add(adjId);
+  actor.cells.forEach(cell => {
+    dirs.forEach(([dc, dr]) => {
+      const nc = cell.col + dc;
+      const nr = cell.row + dr;
+      if (nc >= 0 && nc < COLS && nr >= 0 && nr < ROWS) {
+        if (grid[nr][nc] !== actor.id) {
+          frontiers.push({ col: nc, row: nr });
         }
-      });
-    }
+      }
+    });
   });
-  return Array.from(neighbors);
+  return frontiers;
 }
 
-function handleTerritoryClick(territoryId) {
-  const ownerId = stateData[territoryId].owner;
+function handleCellClick(col, row) {
+  const ownerId = grid[row][col];
   const owner = nations[ownerId];
-  showToast(`${NODES[territoryId].name} (${territoryId}) | Owner: ${owner.name} (${owner.coins} coins)`);
+  showToast(`${owner.name} (${ownerId}) | Cells: ${owner.cells.length} | Gold: ${owner.coins}`);
 }
 
 function updateUI() {
-  const activeNations = Object.values(nations).filter(n => n.territories.length > 0 && !n.isMergedSub);
+  const activeNations = Object.values(nations).filter(n => n.cells.length > 0 && !n.isMergedSub);
   document.getElementById("nation-count").textContent = activeNations.length;
 
-  const sorted = [...activeNations].sort((a, b) => (b.territories.length * 100 + b.coins) - (a.territories.length * 100 + a.coins));
+  const sorted = [...activeNations].sort((a, b) => (b.cells.length * 100 + b.coins) - (a.cells.length * 100 + a.coins));
   const lbContainer = document.getElementById("lb-container");
   lbContainer.innerHTML = "";
 
@@ -961,7 +932,7 @@ function updateUI() {
         <strong>${n.name}</strong>
       </div>
       <div>
-        <span style="color:var(--text-dim);margin-right:8px;">${n.territories.length} terr</span>
+        <span style="color:var(--text-dim);margin-right:8px;">${n.cells.length} px</span>
         <span style="color:var(--accent-gold);font-weight:800;">${n.coins}g</span>
       </div>
     `;
@@ -991,7 +962,7 @@ function populateDropdown() {
   const sel = document.getElementById("state-select");
   sel.innerHTML = '<option value="">-- Choose State to Fund --</option>';
   Object.keys(nations).forEach(id => {
-    if (!nations[id].isOceanHub) {
+    if (!nations[id].isOcean) {
       const opt = document.createElement("option");
       opt.value = id;
       opt.textContent = nations[id].name;
@@ -1017,7 +988,7 @@ function toggleSimulation() {
     isRunning = true;
     document.getElementById("sim-status").textContent = "RUNNING";
     document.getElementById("sim-status").style.color = "var(--accent-green)";
-    simInterval = setInterval(stepTurn, 550);
+    simInterval = setInterval(stepTurn, 500);
   }
 }
 
@@ -1032,7 +1003,7 @@ document.getElementById("btn-toggle").addEventListener("click", toggleSimulation
 document.getElementById("btn-step").addEventListener("click", stepTurn);
 
 document.getElementById("btn-random-rich").addEventListener("click", () => {
-  const activeIds = Object.keys(nations).filter(id => nations[id].territories.length > 0 && !nations[id].isMergedSub && !nations[id].isOceanHub);
+  const activeIds = Object.keys(nations).filter(id => nations[id].cells.length > 0 && !nations[id].isMergedSub && !nations[id].isOcean);
   if (activeIds.length === 0) return;
   const pickedId = activeIds[Math.floor(Math.random() * activeIds.length)];
   nations[pickedId].coins += Math.floor(Math.random() * 6000) + 4000;
