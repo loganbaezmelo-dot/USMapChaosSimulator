@@ -60,7 +60,7 @@
     stroke: rgba(0, 0, 0, 0.2);
     stroke-width: 0.6;
     cursor: pointer;
-    transition: fill 0.12s ease;
+    transition: fill 0.08s ease;
   }
 
   .cell-tile.ocean {
@@ -92,7 +92,7 @@
     stroke-width: 2.2;
     filter: drop-shadow(0 0 4px rgba(0,0,0,0.9));
     cursor: pointer;
-    transition: cx 0.25s ease-out, cy 0.25s ease-out;
+    transition: cx 0.2s ease-out, cy 0.2s ease-out;
   }
 
   .capital-marker.dodging {
@@ -174,6 +174,23 @@
     gap: 6px;
   }
 
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .speed-btn {
+    background: #192434;
+    border: 1px solid var(--border-color);
+    color: var(--accent-gold);
+    padding: 3px 8px;
+    border-radius: 6px;
+    font-size: 0.72rem;
+    font-weight: 900;
+    cursor: pointer;
+  }
+
   .status-badge {
     background: #192434;
     border: 1px solid #2e415b;
@@ -199,7 +216,7 @@
     border-radius: 8px;
     cursor: pointer;
     touch-action: manipulation;
-    transition: all 0.15s ease;
+    transition: all 0.12s ease;
   }
 
   button.btn:active {
@@ -291,7 +308,7 @@
   .log-war { border-left-color: var(--accent-red); }
   .log-buy { border-left-color: var(--accent-gold); }
   .log-merge { border-left-color: var(--accent-purple); }
-  .log-revolt { border-left-color: #f97316; }
+  .log-revolt { border-left-color: #f97316; background: #1c140c; }
   .log-alliance { border-left-color: var(--accent-green); }
   .log-dodge { border-left-color: #38bdf8; }
   .log-bailout { border-left-color: #eab308; background: #161a22; }
@@ -397,7 +414,10 @@
   <div id="sidebar">
     <div class="panel-header">
       <div class="panel-title">⚡ STATE SIMULATOR</div>
-      <div class="status-badge" id="sim-status">PAUSED</div>
+      <div class="header-actions">
+        <button class="speed-btn" id="btn-speed">2x SPD</button>
+        <div class="status-badge" id="sim-status">PAUSED</div>
+      </div>
     </div>
 
     <div class="controls-grid">
@@ -414,6 +434,7 @@
       </select>
     </div>
 
+    <!-- 4 Dashboard Menus -->
     <div class="tabs">
       <button class="tab-btn active" id="tab-log">FEED</button>
       <button class="tab-btn" id="tab-lb">RANK</button>
@@ -542,6 +563,14 @@ let isRunning = false;
 let simInterval = null;
 let lastRevoltYear = 0;
 
+// Speeds: 1x (350ms), 2x (180ms), 5x (70ms)
+const SPEEDS = [
+  { label: "1x SPD", interval: 350 },
+  { label: "2x SPD", interval: 180 },
+  { label: "5x SPD", interval: 70 }
+];
+let speedIndex = 1; // Default: 2x (180ms)
+
 function initSimulation() {
   grid = [];
   nations = {};
@@ -560,7 +589,9 @@ function initSimulation() {
       mergedWith: null,
       isMergedSub: false,
       isEliminated: false,
-      targetFocus: null, // Tracks if currently focusing on eliminating a smaller state
+      targetFocus: null,
+      immunityUntil: 0, // Truce shield year against former master
+      truceWith: null,
       capital: { x: 0, y: 0, col: def.seed[0], row: def.seed[1] }
     };
     colorIdx++;
@@ -625,7 +656,7 @@ function initSimulation() {
   renderMap();
   populateDropdown();
   updateUI();
-  addLog("Simulator initialized with Capital Awareness & Retaliation mechanics.", "log-dodge");
+  addLog("Simulator initialized with fast pace & Rebel Truce Shields.", "log-dodge");
 }
 
 function recalcCentroid(nationId) {
@@ -752,10 +783,6 @@ function paintMap() {
   });
 }
 
-// CAPITAL PROXIMITY 1-5PX SCAN & DECISION LOGIC:
-// - If enemy gets 1-5px from capital:
-// - If the target state is focused on eliminating something else and is small/medium: it FAILS to notice and gets eliminated!
-// - If the target state is big (30+ cells): it NOTICES even when attacking, relocates capital, and counter-attacks!
 function checkCapitalProximityThreats(activeIds) {
   activeIds.forEach(targetId => {
     const victim = nations[targetId];
@@ -768,7 +795,6 @@ function checkCapitalProximityThreats(activeIds) {
     let closestEnemy = null;
     let shortestDist = 999;
 
-    // Scan 1 to 5 cells in all directions from the capital
     for (let dr = -5; dr <= 5; dr++) {
       for (let dc = -5; dc <= 5; dc++) {
         const nr = capRow + dr;
@@ -776,7 +802,10 @@ function checkCapitalProximityThreats(activeIds) {
         if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
           const owner = grid[nr][nc];
           if (owner && owner !== targetId && !victim.allies.includes(owner) && !nations[owner].isEliminated) {
-            // Islands cannot decapitate mainland capitals unless they have a mainland cell
+            // Respect Rebel Truce Shield!
+            if (victim.immunityUntil > year && victim.truceWith === owner) continue;
+            if (nations[owner].immunityUntil > year && nations[owner].truceWith === targetId) continue;
+
             if (!isIslandSector && nr >= 25 && !nations[owner].cells.some(c => c.row < 25)) {
               continue;
             }
@@ -790,22 +819,18 @@ function checkCapitalProximityThreats(activeIds) {
       }
     }
 
-    // Capital has an enemy within 1-5 cells!
     if (closestEnemy && shortestDist <= 5) {
       const invader = nations[closestEnemy];
-      const isBigState = victim.cells.length >= 28;
+      const isBigState = victim.cells.length >= 26;
       const isDistracted = (victim.targetFocus !== null);
 
-      // CASE 1: Distracted small/medium state fails to notice in time -> Instant Decapitation!
       if (!isBigState && isDistracted) {
-        addLog(`🎯 SNEAK DECAPITATION (${shortestDist}px): ${invader.name} reached ${victim.name}'s capital while it was distracted eliminating ${nations[victim.targetFocus]?.name || 'rebels'}! ${victim.name} is ELIMINATED!`, "log-decap");
+        addLog(`🎯 SNEAK DECAPITATION (${shortestDist}px): ${invader.name} seized ${victim.name}'s capital while distracted! ${victim.name} is ELIMINATED!`, "log-decap");
         executeCapitalAnnexation(targetId, closestEnemy);
         return;
       }
 
-      // CASE 2: Big empire notices even while distracted, moves capital and counter-attacks
       if (isBigState) {
-        // Find safe inland cells
         const inlandCells = victim.cells.filter(c => {
           return Math.abs(c.col - capCol) > 2 || Math.abs(c.row - capRow) > 2;
         });
@@ -823,27 +848,23 @@ function checkCapitalProximityThreats(activeIds) {
             setTimeout(() => capEl.classList.remove("dodging"), 400);
           }
 
-          addLog(`🚨 AWARENESS: ${victim.name} (Large Empire) noticed ${invader.name} sneaking within ${shortestDist}px of its capital! Capital evacuated!`, "log-dodge");
-
-          // Retaliation counter-invasion
+          addLog(`🚨 AWARENESS: ${victim.name} (Large Empire) noticed ${invader.name} sneaking within ${shortestDist}px of its capital! Evacuated!`, "log-dodge");
           retaliateAgainstSneakInvader(victim, invader);
         } else {
-          // No inland cells left for even a big state -> falls!
           executeCapitalAnnexation(targetId, closestEnemy);
         }
         return;
       }
 
-      // CASE 3: Small state NOT currently distracted has a normal 60% chance to evacuate, otherwise falls!
       if (Math.random() < 0.60 && victim.cells.length > 3) {
         const safeCell = victim.cells[Math.floor(victim.cells.length / 2)];
         victim.capital.x = (safeCell.col * CELL_W) + (CELL_W / 2);
         victim.capital.y = (safeCell.row * CELL_H) + (CELL_H / 2);
         victim.capital.col = safeCell.col;
         victim.capital.row = safeCell.row;
-        addLog(`⚠️ ALERT: ${victim.name} quickly relocated capital away from approaching ${invader.name} troops!`, "log-dodge");
+        addLog(`⚠️ ALERT: ${victim.name} relocated capital away from approaching ${invader.name} troops!`, "log-dodge");
       } else {
-        addLog(`💥 CAPITAL OVERRUN (${shortestDist}px): ${invader.name} breached ${victim.name}'s capital before it could react! ${victim.name} is ELIMINATED!`, "log-decap");
+        addLog(`💥 CAPITAL OVERRUN (${shortestDist}px): ${invader.name} breached ${victim.name}'s capital! ${victim.name} is ELIMINATED!`, "log-decap");
         executeCapitalAnnexation(targetId, closestEnemy);
       }
     }
@@ -866,7 +887,7 @@ function retaliateAgainstSneakInvader(defender, attacker) {
   recalcCentroid(defender.id);
   recalcCentroid(attacker.id);
 
-  addLog(`⚔️ RETALIATION: ${defender.name} turned its armies around and annexed ${counterCount}px from reckless ${attacker.name}!`, "log-war");
+  addLog(`⚔️ RETALIATION: ${defender.name} turned its armies around and seized ${counterCount}px from ${attacker.name}!`, "log-war");
 
   if (attacker.cells.length === 0) {
     attacker.isEliminated = true;
@@ -898,7 +919,7 @@ function executeCapitalAnnexation(victimId, conquerorId) {
     distributeEliminatedTerritory(victimId, conquerorId);
     paintMap();
     updateUI();
-  }, 350);
+  }, 250);
 }
 
 function distributeEliminatedTerritory(victimId, primaryConquerorId) {
@@ -990,24 +1011,23 @@ function stepTurn() {
     const nation = nations[id];
     if (nation.cells.length === 0 || nation.isMergedSub || nation.isEliminated) return;
 
-    const baseIncome = Math.floor(nation.cells.length * 1.7) + 6;
-    const militaryUpkeep = Math.floor(nation.cells.length * 1.5);
+    const baseIncome = Math.floor(nation.cells.length * 1.8) + 8;
+    const militaryUpkeep = Math.floor(nation.cells.length * 1.4);
     nation.coins = Math.max(0, nation.coins + baseIncome - militaryUpkeep);
   });
 
   let activeIds = Object.keys(nations).filter(id => nations[id].cells.length > 0 && !nations[id].isMergedSub && !nations[id].isEliminated);
   if (activeIds.length <= 1) {
     pauseSimulation();
-    showToast(`Simulation complete! Hegemon: ${nations[activeIds[0]].name}`);
+    showToast(`Simulation complete! Champion: ${nations[activeIds[0]].name}`);
     return;
   }
 
   handleBankruptcies(activeIds);
-
-  // Capital Proximity Decapitation & Awareness Checks
   checkCapitalProximityThreats(activeIds);
 
-  const actionsThisTurn = Math.min(activeIds.length, Math.floor(Math.random() * 3) + 2);
+  // Scaled Multi-Action Tempo: 4 to 7 actions per turn to prevent long-drawn stalemates
+  const actionsThisTurn = Math.min(activeIds.length, Math.floor(Math.random() * 4) + 4);
 
   for (let a = 0; a < actionsThisTurn; a++) {
     activeIds = Object.keys(nations).filter(id => nations[id].cells.length > 0 && !nations[id].isMergedSub && !nations[id].isEliminated);
@@ -1020,13 +1040,13 @@ function stepTurn() {
 
     const roll = Math.random();
 
-    if (roll < 0.20 && actor.coins >= 350) {
+    if (roll < 0.18 && actor.coins >= 350) {
       attemptChunkPurchase(actor);
-    } else if (roll < 0.36) {
+    } else if (roll < 0.32) {
       attemptAlliance(actor, activeIds);
-    } else if (roll < 0.50 && actor.cells.length < 18) {
+    } else if (roll < 0.44 && actor.cells.length < 18) {
       attemptWartimeMerge(actor, activeIds);
-    } else if (roll < 0.52 && (year - lastRevoltYear >= 6)) {
+    } else if (roll < 0.48 && (year - lastRevoltYear >= 5)) {
       attemptRevolt(activeIds);
     } else {
       attemptMilitaryPush(actor, activeIds);
@@ -1044,7 +1064,7 @@ function attemptMilitaryPush(actor, activeIds) {
 
   if (frontierCells.length === 0) {
     const foreignNations = activeIds.filter(id => id !== actor.id && !actor.allies.includes(id));
-    if (foreignNations.length === 0 || actor.coins < 220) return;
+    if (foreignNations.length === 0 || actor.coins < 200) return;
 
     const targetNationId = foreignNations[Math.floor(Math.random() * foreignNations.length)];
     const targetNation = nations[targetNationId];
@@ -1061,7 +1081,10 @@ function attemptMilitaryPush(actor, activeIds) {
 
   if (!defender || defender.isEliminated || defenderId === actor.id) return;
 
-  // Set target focus (distraction mechanic)
+  // Respect Truce Shields!
+  if (defender.immunityUntil > year && defender.truceWith === actor.id) return;
+  if (actor.immunityUntil > year && actor.truceWith === defender.id) return;
+
   actor.targetFocus = defenderId;
 
   if (actor.allies.includes(defenderId)) {
@@ -1078,7 +1101,8 @@ function attemptMilitaryPush(actor, activeIds) {
   const defenderPower = (defender.cells.length * 2.5) + (defenderBudget * 0.4) + (Math.random() * 35);
 
   if (attackerPower >= defenderPower * 0.82) {
-    const campaignSize = Math.floor(Math.random() * 6) + 5;
+    // Decisive push size (6 to 12 pixels per campaign)
+    const campaignSize = Math.floor(Math.random() * 7) + 6;
     const conquered = Math.min(defender.cells.length, campaignSize);
 
     for (let i = 0; i < conquered; i++) {
@@ -1088,7 +1112,7 @@ function attemptMilitaryPush(actor, activeIds) {
       actor.cells.push(c);
     }
 
-    const militaryExpenditure = (conquered * 22) + 40;
+    const militaryExpenditure = (conquered * 20) + 35;
     actor.coins = Math.max(0, actor.coins - militaryExpenditure);
     defender.coins = Math.max(0, defender.coins - Math.floor(conquered * 8));
 
@@ -1103,8 +1127,8 @@ function attemptMilitaryPush(actor, activeIds) {
       addLog(`⚔️ ${actor.name} annexed ${conquered}px from ${defender.name} for ${militaryExpenditure}g!`, "log-war");
     }
   } else {
-    actor.coins = Math.max(0, actor.coins - 85);
-    addLog(`🛡️ ${defender.name} repulsed ${actor.name}'s assault! (-85g)`, "log-dodge");
+    actor.coins = Math.max(0, actor.coins - 80);
+    addLog(`🛡️ ${defender.name} repulsed ${actor.name}'s assault! (-80g)`, "log-dodge");
     actor.targetFocus = null;
   }
 }
@@ -1170,8 +1194,9 @@ function attemptWartimeMerge(actor, activeIds) {
   addLog(`🧬 MERGER: ${partner.name} merged into ${actor.name} for defense!`, "log-merge");
 }
 
+// FAIR REBELLION ENGINE (12-YEAR TRUCE SHIELD & WAR GRANTS)
 function attemptRevolt(activeIds) {
-  const giantEmpires = activeIds.filter(id => nations[id].cells.length >= 40);
+  const giantEmpires = activeIds.filter(id => nations[id].cells.length >= 35);
   if (giantEmpires.length === 0) return;
 
   const targetEmpire = nations[giantEmpires[Math.floor(Math.random() * giantEmpires.length)]];
@@ -1184,20 +1209,35 @@ function attemptRevolt(activeIds) {
   rebel.isMergedSub = false;
   rebel.isEliminated = false;
   rebel.mergedWith = null;
-  rebel.coins = 320;
 
-  const revoltSize = Math.min(8, Math.floor(targetEmpire.cells.length * 0.18));
+  // Solid War Chest so they aren't broke & helpless
+  rebel.coins = 650;
+
+  // REBEL TRUCE SHIELD: 12 Years of guaranteed immunity from the empire they rebelled from!
+  rebel.immunityUntil = year + 12;
+  rebel.truceWith = targetEmpire.id;
+
+  // Carve out a viable defensive pocket (10 to 14 pixels)
+  const revoltSize = Math.min(14, Math.floor(targetEmpire.cells.length * 0.22));
   for (let i = 0; i < revoltSize; i++) {
-    if (targetEmpire.cells.length <= 10) break;
+    if (targetEmpire.cells.length <= 8) break;
     const c = targetEmpire.cells.pop();
     grid[c.row][c.col] = rebel.id;
     rebel.cells.push(c);
   }
 
+  // Auto-ally with a rival empire if available to protect them
+  const rivalEmpires = activeIds.filter(id => id !== targetEmpire.id && !targetEmpire.allies.includes(id));
+  if (rivalEmpires.length > 0) {
+    const protectorId = rivalEmpires[Math.floor(Math.random() * rivalEmpires.length)];
+    rebel.allies.push(protectorId);
+    nations[protectorId].allies.push(rebel.id);
+  }
+
   recalcCentroid(rebel.id);
   recalcCentroid(targetEmpire.id);
   lastRevoltYear = year;
-  addLog(`🔥 REBELLION: ${rebel.name} declared independence from ${targetEmpire.name}!`, "log-revolt");
+  addLog(`🛡️ REBEL UPRISING: ${rebel.name} seized ${revoltSize}px from ${targetEmpire.name} with a 12-Year Truce Shield!`, "log-revolt");
 }
 
 function findFrontierCells(actor) {
@@ -1407,7 +1447,7 @@ function toggleSimulation() {
     isRunning = true;
     document.getElementById("sim-status").textContent = "RUNNING";
     document.getElementById("sim-status").style.color = "var(--accent-green)";
-    simInterval = setInterval(stepTurn, 450);
+    simInterval = setInterval(stepTurn, SPEEDS[speedIndex].interval);
   }
 }
 
@@ -1417,6 +1457,16 @@ function pauseSimulation() {
   document.getElementById("sim-status").textContent = "PAUSED";
   document.getElementById("sim-status").style.color = "#fff";
 }
+
+// Speed Toggle: 1x -> 2x -> 5x
+document.getElementById("btn-speed").addEventListener("click", () => {
+  speedIndex = (speedIndex + 1) % SPEEDS.length;
+  document.getElementById("btn-speed").textContent = SPEEDS[speedIndex].label;
+  if (isRunning) {
+    clearInterval(simInterval);
+    simInterval = setInterval(stepTurn, SPEEDS[speedIndex].interval);
+  }
+});
 
 document.getElementById("btn-toggle").addEventListener("click", toggleSimulation);
 document.getElementById("btn-step").addEventListener("click", stepTurn);
