@@ -325,7 +325,7 @@
       <div>Active Nations: <span id="nation-count" style="color:var(--accent-green)">51</span></div>
     </div>
 
-    <div id="toast">Florida invaded Havana!</div>
+    <div id="toast">Simulation Ready!</div>
 
     <svg id="map" viewBox="0 0 960 600">
       <defs>
@@ -495,11 +495,13 @@ let nations = {};
 let year = 1;
 let isRunning = false;
 let simInterval = null;
+let lastRevoltYear = 0; // Revolt cooldown throttle
 
 function initSimulation() {
   grid = [];
   nations = {};
   let colorIdx = 0;
+  lastRevoltYear = 0;
 
   Object.keys(STATE_DEFS).forEach(id => {
     const def = STATE_DEFS[id];
@@ -577,21 +579,39 @@ function initSimulation() {
   renderMap();
   populateDropdown();
   updateUI();
-  addLog("Dynamic simulation ready. Warfare economics & multi-front assault active.", "log-dodge");
+  addLog("Simulation initialized. Void capital protection & calm revolt pacing active.", "log-dodge");
 }
 
+// STRICT NO-VOID CENTROID: Capitals only snap to physical land cells owned by the state
 function recalcCentroid(nationId) {
   const nation = nations[nationId];
   if (!nation || nation.cells.length === 0) return;
 
-  let sumX = 0, sumY = 0;
+  let sumCol = 0, sumRow = 0;
   nation.cells.forEach(cell => {
-    sumX += (cell.col * CELL_W) + (CELL_W / 2);
-    sumY += (cell.row * CELL_H) + (CELL_H / 2);
+    sumCol += cell.col;
+    sumRow += cell.row;
   });
 
-  nation.capital.x = Math.round(sumX / nation.cells.length);
-  nation.capital.y = Math.round(sumY / nation.cells.length);
+  const avgCol = sumCol / nation.cells.length;
+  const avgRow = sumRow / nation.cells.length;
+
+  // Find the real owned land cell closest to the mathematical center
+  let bestCell = nation.cells[0];
+  let minDist = 999999;
+
+  nation.cells.forEach(cell => {
+    const d = Math.pow(cell.col - avgCol, 2) + Math.pow(cell.row - avgRow, 2);
+    if (d < minDist) {
+      minDist = d;
+      bestCell = cell;
+    }
+  });
+
+  nation.capital.x = (bestCell.col * CELL_W) + (CELL_W / 2);
+  nation.capital.y = (bestCell.row * CELL_H) + (CELL_H / 2);
+  nation.capital.col = bestCell.col;
+  nation.capital.row = bestCell.row;
 }
 
 function renderMap() {
@@ -711,6 +731,7 @@ function checkCapitalDangerAndDodge(nationId) {
   }
 
   if (directlyThreatenedBy) {
+    // Only choose from verified physical land cells owned by the state
     const safeCells = nation.cells.filter(cell => {
       return dirs.every(([dc, dr]) => {
         const nc = cell.col + dc;
@@ -727,6 +748,8 @@ function checkCapitalDangerAndDodge(nationId) {
       const targetCell = safeCells[0];
       nation.capital.x = (targetCell.col * CELL_W) + (CELL_W / 2);
       nation.capital.y = (targetCell.row * CELL_H) + (CELL_H / 2);
+      nation.capital.col = targetCell.col;
+      nation.capital.row = targetCell.row;
 
       const capEl = document.getElementById("cap-" + nationId);
       if (capEl) {
@@ -812,16 +835,16 @@ function manualMoveCapital(nationId) {
   const randomCell = nation.cells[Math.floor(Math.random() * nation.cells.length)];
   nation.capital.x = (randomCell.col * CELL_W) + (CELL_W / 2);
   nation.capital.y = (randomCell.row * CELL_H) + (CELL_H / 2);
+  nation.capital.col = randomCell.col;
+  nation.capital.row = randomCell.row;
   paintMap();
   showToast(`${nation.name} manually moved capital!`);
 }
 
-// Multi-Action Turn Execution (Breaks the 30-state bottleneck)
 function stepTurn() {
   year++;
   document.getElementById("year-count").textContent = year;
 
-  // Strict Balanced Economics: low passive income, military maintenance drain
   Object.keys(nations).forEach(id => {
     const nation = nations[id];
     if (nation.cells.length === 0 || nation.isMergedSub || nation.isEliminated) return;
@@ -840,7 +863,6 @@ function stepTurn() {
     return;
   }
 
-  // Run 3-5 concurrent actions per turn to maintain warfare momentum
   const actionsThisTurn = Math.min(activeIds.length, Math.floor(Math.random() * 3) + 3);
 
   for (let a = 0; a < actionsThisTurn; a++) {
@@ -856,18 +878,18 @@ function stepTurn() {
       attemptChunkPurchase(actor);
     }
     // 2. Alliances
-    else if (roll < 0.35) {
+    else if (roll < 0.36) {
       attemptAlliance(actor, activeIds);
     }
-    // 3. Mergers (Coalitions against bigger empires)
-    else if (roll < 0.48 && actor.cells.length < 18) {
+    // 3. Mergers
+    else if (roll < 0.50 && actor.cells.length < 18) {
       attemptWartimeMerge(actor, activeIds);
     }
-    // 4. Splinter Revolts
-    else if (roll < 0.58) {
+    // 4. Heavily Throttled Revolts (Only 2% chance and minimum 5 years cooldown)
+    else if (roll < 0.52 && (year - lastRevoltYear >= 5)) {
       attemptRevolt(activeIds);
     }
-    // 5. Military Offensive (Annexation & Gold Burn)
+    // 5. Military Offensive & Gold Deduction
     else {
       attemptMilitaryPush(actor, activeIds);
     }
@@ -877,11 +899,9 @@ function stepTurn() {
   updateUI();
 }
 
-// Military Push: Deducts substantial gold per conquered pixel and pushes frontiers
 function attemptMilitaryPush(actor, activeIds) {
   let frontierCells = findFrontierCells(actor);
 
-  // If stuck with no direct land neighbors (AK, HI, PR, coastal corners), launch naval overseas assault
   if (frontierCells.length === 0) {
     const foreignNations = activeIds.filter(id => id !== actor.id && !actor.allies.includes(id));
     if (foreignNations.length === 0 || actor.coins < 200) return;
@@ -908,7 +928,6 @@ function attemptMilitaryPush(actor, activeIds) {
     addLog(`💔 Alliance broken: ${actor.name} declared war on ${defender.name}!`, "log-war");
   }
 
-  // Combat comparison based on territorial size + military budget
   const attackerBudget = Math.min(actor.coins, 250);
   const defenderBudget = Math.min(defender.coins, 250);
 
@@ -916,7 +935,6 @@ function attemptMilitaryPush(actor, activeIds) {
   const defenderPower = (defender.cells.length * 2.5) + (defenderBudget * 0.4) + (Math.random() * 35);
 
   if (attackerPower >= defenderPower * 0.82) {
-    // Aggressive conquest: annex 6 to 12 pixels per push
     const campaignSize = Math.floor(Math.random() * 7) + 6;
     const conquered = Math.min(defender.cells.length, campaignSize);
 
@@ -927,10 +945,9 @@ function attemptMilitaryPush(actor, activeIds) {
       actor.cells.push(c);
     }
 
-    // STRICT GOLD LOSS: 22 gold per conquered pixel + campaign logistics
     const militaryExpenditure = (conquered * 22) + 40;
     actor.coins = Math.max(0, actor.coins - militaryExpenditure);
-    defender.coins = Math.max(0, defender.coins - Math.floor(conquered * 8)); // pillaged
+    defender.coins = Math.max(0, defender.coins - Math.floor(conquered * 8));
 
     recalcCentroid(actor.id);
     recalcCentroid(defender.id);
@@ -942,10 +959,8 @@ function attemptMilitaryPush(actor, activeIds) {
       addLog(`⚔️ ${actor.name} annexed ${conquered}px from ${defender.name} for ${militaryExpenditure}g!`, "log-war");
     }
 
-    // Trigger immediate capital defense check if front closed in
     checkCapitalDangerAndDodge(defenderId);
   } else {
-    // Failed assault cost
     actor.coins = Math.max(0, actor.coins - 85);
     addLog(`🛡️ ${defender.name} repulsed ${actor.name}'s assault! (-85g)`, "log-dodge");
   }
@@ -1012,11 +1027,12 @@ function attemptWartimeMerge(actor, activeIds) {
   addLog(`🧬 MERGER: ${partner.name} merged into ${actor.name} for mutual survival!`, "log-merge");
 }
 
+// Controlled, Rare Revolts (Only huge empires 40+ cells with cooldown)
 function attemptRevolt(activeIds) {
-  const empires = activeIds.filter(id => nations[id].cells.length >= 30);
-  if (empires.length === 0) return;
+  const giantEmpires = activeIds.filter(id => nations[id].cells.length >= 40);
+  if (giantEmpires.length === 0) return;
 
-  const targetEmpire = nations[empires[Math.floor(Math.random() * empires.length)]];
+  const targetEmpire = nations[giantEmpires[Math.floor(Math.random() * giantEmpires.length)]];
   const rebelNationIds = Object.keys(nations).filter(id => (nations[id].cells.length === 0 || nations[id].isEliminated));
   if (rebelNationIds.length === 0) return;
 
@@ -1026,11 +1042,11 @@ function attemptRevolt(activeIds) {
   rebel.isMergedSub = false;
   rebel.isEliminated = false;
   rebel.mergedWith = null;
-  rebel.coins = 280;
+  rebel.coins = 320;
 
-  const revoltSize = Math.min(10, Math.floor(targetEmpire.cells.length * 0.25));
+  const revoltSize = Math.min(8, Math.floor(targetEmpire.cells.length * 0.18));
   for (let i = 0; i < revoltSize; i++) {
-    if (targetEmpire.cells.length <= 6) break;
+    if (targetEmpire.cells.length <= 10) break;
     const c = targetEmpire.cells.pop();
     grid[c.row][c.col] = rebel.id;
     rebel.cells.push(c);
@@ -1038,7 +1054,8 @@ function attemptRevolt(activeIds) {
 
   recalcCentroid(rebel.id);
   recalcCentroid(targetEmpire.id);
-  addLog(`🔥 REBELLION: ${rebel.name} broke free from ${targetEmpire.name} taking ${revoltSize}px!`, "log-revolt");
+  lastRevoltYear = year; // Set cooldown
+  addLog(`🔥 RARE REBELLION: ${rebel.name} declared independence from ${targetEmpire.name} taking ${revoltSize}px!`, "log-revolt");
 }
 
 function findFrontierCells(actor) {
