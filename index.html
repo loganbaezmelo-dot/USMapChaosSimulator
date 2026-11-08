@@ -60,7 +60,7 @@
     stroke: rgba(0, 0, 0, 0.2);
     stroke-width: 0.6;
     cursor: pointer;
-    transition: fill 0.15s ease;
+    transition: fill 0.12s ease;
   }
 
   .cell-tile.ocean {
@@ -92,7 +92,7 @@
     stroke-width: 2.2;
     filter: drop-shadow(0 0 4px rgba(0,0,0,0.9));
     cursor: pointer;
-    transition: cx 0.3s ease-out, cy 0.3s ease-out;
+    transition: cx 0.25s ease-out, cy 0.25s ease-out;
   }
 
   .capital-marker.dodging {
@@ -391,30 +391,30 @@ const CELL_W = 20;
 const CELL_H = 20;
 
 const COASTLINE_MASK = [
-  // 0-4 (Northern tier / Canada border)
+  // 0-4
   [0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,0,0,0,0,0],
   [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,0,0,0,0],
   [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0],
   [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,1,1,0,0,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0],
-  // 5-9 (Upper Midwest, Lakes, New England)
+  // 5-9
   [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,0,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0],
   [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,1,1,1,0,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0],
   [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0],
   [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0],
   [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0],
-  // 10-14 (Central Plains, Ohio Valley, Mid-Atlantic)
+  // 10-14
   [0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0],
   [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0],
   [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],
   [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0],
   [0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0],
-  // 15-18 (South, Texas Panhandle, Carolinas, Georgia)
+  // 15-18
   [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
-  // 19-24 (Texas Boot & Florida Peninsula)
+  // 19-24
   [0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
   [0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0],
@@ -507,7 +507,7 @@ function initSimulation() {
       id: id,
       name: def.name,
       color: VIBRANT_COLORS[colorIdx % VIBRANT_COLORS.length],
-      coins: Math.floor(Math.random() * 800) + 400,
+      coins: Math.floor(Math.random() * 500) + 300,
       cells: [],
       allies: [],
       mergedWith: null,
@@ -577,7 +577,7 @@ function initSimulation() {
   renderMap();
   populateDropdown();
   updateUI();
-  addLog("Simulation initialized. Realistic border combat rules active.", "log-dodge");
+  addLog("Dynamic simulation ready. Warfare economics & multi-front assault active.", "log-dodge");
 }
 
 function recalcCentroid(nationId) {
@@ -688,7 +688,6 @@ function paintMap() {
   });
 }
 
-// Fixed Capital Defense: Only triggers if a shared direct neighbor attacks within 1 cell
 function checkCapitalDangerAndDodge(nationId) {
   const nation = nations[nationId];
   if (!nation || nation.cells.length === 0 || nation.isEliminated || nation.isMergedSub) return;
@@ -712,7 +711,6 @@ function checkCapitalDangerAndDodge(nationId) {
   }
 
   if (directlyThreatenedBy) {
-    // Check if there is backline inland territory to retreat to
     const safeCells = nation.cells.filter(cell => {
       return dirs.every(([dc, dr]) => {
         const nc = cell.col + dc;
@@ -737,7 +735,6 @@ function checkCapitalDangerAndDodge(nationId) {
       }
       addLog(`🚨 ${nation.name} capital evacuated deeper inland!`, "log-dodge");
     } else {
-      // Nowhere left to retreat: fall and distribute territory
       executeCapitalAnnexation(nationId, directlyThreatenedBy);
     }
   }
@@ -760,14 +757,14 @@ function executeCapitalAnnexation(victimId, conquerorId) {
     if (rect) rect.setAttribute("fill", "#ffffff");
   });
 
-  addLog(`💥 CAPITAL OVERRUN: ${conqueror.name} captured ${victim.name}'s last stronghold! ${victim.name} is ELIMINATED!`, "log-war");
+  addLog(`💥 CAPITAL OVERRUN: ${conqueror.name} seized ${victim.name}'s capital! ${victim.name} is ELIMINATED!`, "log-war");
   showToast(`${victim.name} fell to ${conqueror.name}!`);
 
   setTimeout(() => {
     distributeEliminatedTerritory(victimId, conquerorId);
     paintMap();
     updateUI();
-  }, 400);
+  }, 350);
 }
 
 function distributeEliminatedTerritory(victimId, primaryConquerorId) {
@@ -806,7 +803,7 @@ function distributeEliminatedTerritory(victimId, primaryConquerorId) {
     }
   });
 
-  addLog(`🗺️ SURROUNDING STATES CARVED UP ${victim.name}'s remaining lands!`, "log-buy");
+  addLog(`🗺️ SURROUNDING STATES DIVIDED ${victim.name}'s remaining lands!`, "log-buy");
 }
 
 function manualMoveCapital(nationId) {
@@ -819,70 +816,110 @@ function manualMoveCapital(nationId) {
   showToast(`${nation.name} manually moved capital!`);
 }
 
+// Multi-Action Turn Execution (Breaks the 30-state bottleneck)
 function stepTurn() {
   year++;
   document.getElementById("year-count").textContent = year;
 
+  // Strict Balanced Economics: low passive income, military maintenance drain
   Object.keys(nations).forEach(id => {
     const nation = nations[id];
     if (nation.cells.length === 0 || nation.isMergedSub || nation.isEliminated) return;
 
-    const income = (nation.cells.length * 6) + Math.floor(Math.random() * 15);
-    const upkeep = Math.floor(nation.cells.length * 2);
-    nation.coins = Math.max(0, nation.coins + income - upkeep);
+    const baseIncome = Math.floor(nation.cells.length * 1.8) + 8;
+    const militaryUpkeep = Math.floor(nation.cells.length * 1.4);
+    nation.coins = Math.max(0, nation.coins + baseIncome - militaryUpkeep);
 
     checkCapitalDangerAndDodge(id);
   });
 
-  const activeIds = Object.keys(nations).filter(id => nations[id].cells.length > 0 && !nations[id].isMergedSub && !nations[id].isEliminated);
+  let activeIds = Object.keys(nations).filter(id => nations[id].cells.length > 0 && !nations[id].isMergedSub && !nations[id].isEliminated);
   if (activeIds.length <= 1) {
     pauseSimulation();
-    showToast(`Simulation ended! Champion: ${nations[activeIds[0]].name}`);
+    showToast(`Simulation complete! Hegemon: ${nations[activeIds[0]].name}`);
     return;
   }
 
-  const actorId = activeIds[Math.floor(Math.random() * activeIds.length)];
-  const actor = nations[actorId];
-  const roll = Math.random();
+  // Run 3-5 concurrent actions per turn to maintain warfare momentum
+  const actionsThisTurn = Math.min(activeIds.length, Math.floor(Math.random() * 3) + 3);
 
-  if (roll < 0.28 && actor.coins >= 450) {
-    attemptChunkPurchase(actor);
-  } else if (roll < 0.44) {
-    attemptAlliance(actor, activeIds);
-  } else if (roll < 0.58 && actor.cells.length < 15) {
-    attemptWartimeMerge(actor, activeIds);
-  } else if (roll < 0.72) {
-    attemptRevolt(activeIds);
-  } else {
-    attemptMilitaryPush(actor);
+  for (let a = 0; a < actionsThisTurn; a++) {
+    activeIds = Object.keys(nations).filter(id => nations[id].cells.length > 0 && !nations[id].isMergedSub && !nations[id].isEliminated);
+    if (activeIds.length <= 1) break;
+
+    const actorId = activeIds[Math.floor(Math.random() * activeIds.length)];
+    const actor = nations[actorId];
+    const roll = Math.random();
+
+    // 1. Buyout Frontier Chunks
+    if (roll < 0.22 && actor.coins >= 350) {
+      attemptChunkPurchase(actor);
+    }
+    // 2. Alliances
+    else if (roll < 0.35) {
+      attemptAlliance(actor, activeIds);
+    }
+    // 3. Mergers (Coalitions against bigger empires)
+    else if (roll < 0.48 && actor.cells.length < 18) {
+      attemptWartimeMerge(actor, activeIds);
+    }
+    // 4. Splinter Revolts
+    else if (roll < 0.58) {
+      attemptRevolt(activeIds);
+    }
+    // 5. Military Offensive (Annexation & Gold Burn)
+    else {
+      attemptMilitaryPush(actor, activeIds);
+    }
   }
 
   paintMap();
   updateUI();
 }
 
-function attemptMilitaryPush(actor) {
-  const frontierCells = findFrontierCells(actor);
-  if (frontierCells.length === 0) return;
+// Military Push: Deducts substantial gold per conquered pixel and pushes frontiers
+function attemptMilitaryPush(actor, activeIds) {
+  let frontierCells = findFrontierCells(actor);
+
+  // If stuck with no direct land neighbors (AK, HI, PR, coastal corners), launch naval overseas assault
+  if (frontierCells.length === 0) {
+    const foreignNations = activeIds.filter(id => id !== actor.id && !actor.allies.includes(id));
+    if (foreignNations.length === 0 || actor.coins < 200) return;
+
+    const targetNationId = foreignNations[Math.floor(Math.random() * foreignNations.length)];
+    const targetNation = nations[targetNationId];
+    if (targetNation.cells.length === 0) return;
+
+    const navalLanding = targetNation.cells[Math.floor(Math.random() * targetNation.cells.length)];
+    frontierCells = [navalLanding];
+    addLog(`⚓ NAVAL INVASION: ${actor.name} mounted overseas landing on ${targetNation.name}!`, "log-war");
+  }
 
   const target = frontierCells[Math.floor(Math.random() * frontierCells.length)];
   const defenderId = grid[target.row][target.col];
   const defender = nations[defenderId];
 
-  if (!defender || defender.isEliminated) return;
+  if (!defender || defender.isEliminated || defenderId === actor.id) return;
 
   if (actor.allies.includes(defenderId)) {
     if (Math.random() < 0.6) return;
     actor.allies = actor.allies.filter(a => a !== defenderId);
     defender.allies = defender.allies.filter(a => a !== actor.id);
-    addLog(`💔 Alliance broken: ${actor.name} attacked ${defender.name}!`, "log-war");
+    addLog(`💔 Alliance broken: ${actor.name} declared war on ${defender.name}!`, "log-war");
   }
 
-  const attackerPower = (actor.cells.length * 2) + (actor.coins * 0.1) + (Math.random() * 20);
-  const defenderPower = (defender.cells.length * 2) + (defender.coins * 0.1) + (Math.random() * 20);
+  // Combat comparison based on territorial size + military budget
+  const attackerBudget = Math.min(actor.coins, 250);
+  const defenderBudget = Math.min(defender.coins, 250);
 
-  if (attackerPower >= defenderPower * 0.85) {
-    const conquered = Math.min(defender.cells.length, Math.floor(Math.random() * 4) + 3);
+  const attackerPower = (actor.cells.length * 2.5) + (attackerBudget * 0.4) + (Math.random() * 35);
+  const defenderPower = (defender.cells.length * 2.5) + (defenderBudget * 0.4) + (Math.random() * 35);
+
+  if (attackerPower >= defenderPower * 0.82) {
+    // Aggressive conquest: annex 6 to 12 pixels per push
+    const campaignSize = Math.floor(Math.random() * 7) + 6;
+    const conquered = Math.min(defender.cells.length, campaignSize);
+
     for (let i = 0; i < conquered; i++) {
       if (defender.cells.length === 0) break;
       const c = defender.cells.pop();
@@ -890,19 +927,27 @@ function attemptMilitaryPush(actor) {
       actor.cells.push(c);
     }
 
-    actor.coins = Math.max(0, actor.coins - 35);
+    // STRICT GOLD LOSS: 22 gold per conquered pixel + campaign logistics
+    const militaryExpenditure = (conquered * 22) + 40;
+    actor.coins = Math.max(0, actor.coins - militaryExpenditure);
+    defender.coins = Math.max(0, defender.coins - Math.floor(conquered * 8)); // pillaged
+
     recalcCentroid(actor.id);
     recalcCentroid(defender.id);
 
     if (defender.cells.length === 0) {
       defender.isEliminated = true;
-      addLog(`💀 ${defender.name} was wiped out completely by ${actor.name}!`, "log-war");
+      addLog(`💀 ${defender.name} collapsed completely! Annexed by ${actor.name}! (-${militaryExpenditure}g)`, "log-war");
     } else {
-      addLog(`⚔️ ${actor.name} annexed borderlands from ${defender.name}!`, "log-war");
+      addLog(`⚔️ ${actor.name} annexed ${conquered}px from ${defender.name} for ${militaryExpenditure}g!`, "log-war");
     }
+
+    // Trigger immediate capital defense check if front closed in
+    checkCapitalDangerAndDodge(defenderId);
   } else {
-    actor.coins = Math.max(0, actor.coins - 80);
-    addLog(`🛡️ ${defender.name} held ground against ${actor.name}!`, "log-dodge");
+    // Failed assault cost
+    actor.coins = Math.max(0, actor.coins - 85);
+    addLog(`🛡️ ${defender.name} repulsed ${actor.name}'s assault! (-85g)`, "log-dodge");
   }
 }
 
@@ -914,14 +959,15 @@ function attemptChunkPurchase(actor) {
   const sellerId = grid[target.row][target.col];
   const seller = nations[sellerId];
 
-  if (!seller || seller.isEliminated) return;
+  if (!seller || seller.isEliminated || sellerId === actor.id) return;
 
-  const price = 300 + (seller.cells.length * 10);
+  const price = 220 + (seller.cells.length * 8);
   if (actor.coins >= price) {
     actor.coins -= price;
     seller.coins += Math.floor(price * 0.85);
 
-    for (let i = 0; i < 4; i++) {
+    const chunk = Math.min(seller.cells.length - 1, 5);
+    for (let i = 0; i < chunk; i++) {
       if (seller.cells.length <= 1) break;
       const c = seller.cells.pop();
       grid[c.row][c.col] = actor.id;
@@ -930,7 +976,7 @@ function attemptChunkPurchase(actor) {
 
     recalcCentroid(actor.id);
     recalcCentroid(seller.id);
-    addLog(`💰 ${actor.name} purchased border territory from ${seller.name} for ${price} coins!`, "log-buy");
+    addLog(`💰 ${actor.name} bought borderlands from ${seller.name} for ${price} gold!`, "log-buy");
   }
 }
 
@@ -946,7 +992,7 @@ function attemptAlliance(actor, activeIds) {
 
 function attemptWartimeMerge(actor, activeIds) {
   const frontier = findFrontierCells(actor);
-  const smallNeighbors = frontier.map(f => grid[f.row][f.col]).filter(id => id && id !== actor.id && nations[id].cells.length <= 12 && !nations[id].isEliminated);
+  const smallNeighbors = frontier.map(f => grid[f.row][f.col]).filter(id => id && id !== actor.id && nations[id].cells.length <= 16 && !nations[id].isEliminated);
   if (smallNeighbors.length === 0) return;
 
   const partnerId = smallNeighbors[0];
@@ -963,11 +1009,11 @@ function attemptWartimeMerge(actor, activeIds) {
   partner.coins = 0;
 
   recalcCentroid(actor.id);
-  addLog(`🧬 MERGER: ${partner.name} combined into ${actor.name} for defense!`, "log-merge");
+  addLog(`🧬 MERGER: ${partner.name} merged into ${actor.name} for mutual survival!`, "log-merge");
 }
 
 function attemptRevolt(activeIds) {
-  const empires = activeIds.filter(id => nations[id].cells.length >= 25);
+  const empires = activeIds.filter(id => nations[id].cells.length >= 30);
   if (empires.length === 0) return;
 
   const targetEmpire = nations[empires[Math.floor(Math.random() * empires.length)]];
@@ -980,10 +1026,11 @@ function attemptRevolt(activeIds) {
   rebel.isMergedSub = false;
   rebel.isEliminated = false;
   rebel.mergedWith = null;
-  rebel.coins = 350;
+  rebel.coins = 280;
 
-  for (let i = 0; i < 8; i++) {
-    if (targetEmpire.cells.length <= 5) break;
+  const revoltSize = Math.min(10, Math.floor(targetEmpire.cells.length * 0.25));
+  for (let i = 0; i < revoltSize; i++) {
+    if (targetEmpire.cells.length <= 6) break;
     const c = targetEmpire.cells.pop();
     grid[c.row][c.col] = rebel.id;
     rebel.cells.push(c);
@@ -991,7 +1038,7 @@ function attemptRevolt(activeIds) {
 
   recalcCentroid(rebel.id);
   recalcCentroid(targetEmpire.id);
-  addLog(`🔥 REVOLT! ${rebel.name} declared independence from ${targetEmpire.name}!`, "log-revolt");
+  addLog(`🔥 REBELLION: ${rebel.name} broke free from ${targetEmpire.name} taking ${revoltSize}px!`, "log-revolt");
 }
 
 function findFrontierCells(actor) {
@@ -1016,7 +1063,7 @@ function handleCellClick(col, row) {
   const ownerId = grid[row][col];
   if (!ownerId) return;
   const owner = nations[ownerId];
-  showToast(`${owner.name} (${ownerId}) | Cells: ${owner.cells.length} | Gold: ${owner.coins}`);
+  showToast(`${owner.name} (${ownerId}) | Cells: ${owner.cells.length} | Gold: ${owner.coins}g`);
 }
 
 function updateUI() {
@@ -1091,7 +1138,7 @@ function toggleSimulation() {
     isRunning = true;
     document.getElementById("sim-status").textContent = "RUNNING";
     document.getElementById("sim-status").style.color = "var(--accent-green)";
-    simInterval = setInterval(stepTurn, 500);
+    simInterval = setInterval(stepTurn, 450);
   }
 }
 
@@ -1109,7 +1156,7 @@ document.getElementById("btn-random-rich").addEventListener("click", () => {
   const activeIds = Object.keys(nations).filter(id => nations[id].cells.length > 0 && !nations[id].isMergedSub && !nations[id].isEliminated);
   if (activeIds.length === 0) return;
   const pickedId = activeIds[Math.floor(Math.random() * activeIds.length)];
-  nations[pickedId].coins += Math.floor(Math.random() * 6000) + 4000;
+  nations[pickedId].coins += Math.floor(Math.random() * 4000) + 2000;
   addLog(`🎰 JACKPOT: ${nations[pickedId].name} struck gold!`, "log-buy");
   showToast(`${nations[pickedId].name} is now filthy rich!`);
   updateUI();
@@ -1118,10 +1165,10 @@ document.getElementById("btn-random-rich").addEventListener("click", () => {
 document.getElementById("btn-drain").addEventListener("click", () => {
   Object.keys(nations).forEach(id => {
     const nation = nations[id];
-    const lost = Math.floor(nation.coins * 0.45);
+    const lost = Math.floor(nation.coins * 0.5);
     nation.coins = Math.max(0, nation.coins - lost);
   });
-  addLog("📉 RESOURCE DRAIN: All active factions burned 45% of treasury!", "log-war");
+  addLog("📉 RESOURCE DRAIN: All active factions burned 50% of treasury!", "log-war");
   showToast("Mass resource drain applied!");
   updateUI();
 });
